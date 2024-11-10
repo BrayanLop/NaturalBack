@@ -1,0 +1,70 @@
+﻿using Microsoft.AspNetCore.Mvc;
+using Natural.Data.Areas.Estructura;
+using Natural.Models.Areas.Estructura;
+
+[ApiController]
+[Route("api/[controller]")]
+public class ServicioController : ControllerBase
+{
+    private readonly ServicioEstructura _servicioEstructura;
+
+    public ServicioController(ServicioEstructura servicioEstructura)
+    {
+        _servicioEstructura = servicioEstructura;
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> CrearServicio([FromBody] ServicioViewModel servicioViewModel)
+    {
+        var nuevoServicio = await _servicioEstructura.CrearServicioAsync(servicioViewModel);
+        return CreatedAtAction(nameof(ObtenerServicioPorId), new { id = nuevoServicio.Id }, nuevoServicio);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ObtenerTodosLosServicios()
+    {
+        var servicios = await _servicioEstructura.ObtenerTodosLosServicioAsync();
+        return Ok(servicios);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> ObtenerServicioPorId(int id)
+    {
+        var servicio = await _servicioEstructura.ObtenerServicioPorIdAsync(id);
+        if (servicio == null)
+        {
+            return NotFound();
+        }
+
+        return Ok(servicio);
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> ActualizarServicio(int id, [FromBody] ServicioViewModel servicioViewModel)
+    {
+        if (id != servicioViewModel.Id)
+        {
+            return BadRequest();
+        }
+
+        var actualizado = await _servicioEstructura.ActualizarServicioAsync(servicioViewModel);
+        if (!actualizado)
+        {
+            return NotFound();
+        }
+
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> EliminarServicio(int id)
+    {
+        var eliminado = await _servicioEstructura.EliminarServicioAsync(id);
+        if (!eliminado)
+        {
+            return NotFound();
+        }
+
+        return NoContent();
+    }
+}
