@@ -1,7 +1,5 @@
 ﻿using Natural.Data.Domain;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Natural.Models.Areas.Estructura;
 
 namespace Natural.Data.Areas.Estructura
@@ -20,8 +18,10 @@ namespace Natural.Data.Areas.Estructura
             var servicio = new Servicio
             {
                 Nombre = servicioViewModel.Nombre,
-                Descripcion = servicioViewModel.Descripcion
-                // Mapear otros campos según sea necesario
+                Descripcion = servicioViewModel.Descripcion,
+                FechaCreacion = DateTime.UtcNow,
+                Disponible = servicioViewModel.Disponible,
+                Precio = servicioViewModel.Precio
             };
 
             _context.Servicio.Add(servicio);
@@ -49,7 +49,9 @@ namespace Natural.Data.Areas.Estructura
 
             servicio.Nombre = servicioViewModel.Nombre;
             servicio.Descripcion = servicioViewModel.Descripcion;
-            // Actualizar otros campos según sea necesario
+            servicio.FechaCreacion = DateTime.UtcNow;
+            servicio.Disponible = servicioViewModel.Disponible;
+            servicio.Precio = servicioViewModel.Precio;
 
             _context.Servicio.Update(servicio);
             await _context.SaveChangesAsync();

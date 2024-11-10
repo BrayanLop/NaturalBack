@@ -14,9 +14,9 @@ public class ServicioController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> CrearServicio([FromBody] ServicioViewModel servicioViewModel)
+    public async Task<IActionResult> CrearServicio([FromBody] ServicioViewModel servicio)
     {
-        var nuevoServicio = await _servicioEstructura.CrearServicioAsync(servicioViewModel);
+        var nuevoServicio = await _servicioEstructura.CrearServicioAsync(servicio);
         return CreatedAtAction(nameof(ObtenerServicioPorId), new { id = nuevoServicio.Id }, nuevoServicio);
     }
 
@@ -40,20 +40,20 @@ public class ServicioController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> ActualizarServicio(int id, [FromBody] ServicioViewModel servicioViewModel)
+    public async Task<IActionResult> ActualizarServicio(int id, [FromBody] ServicioViewModel servicio)
     {
-        if (id != servicioViewModel.Id)
+        if (id != servicio.Id)
         {
             return BadRequest();
         }
 
-        var actualizado = await _servicioEstructura.ActualizarServicioAsync(servicioViewModel);
+        var actualizado = await _servicioEstructura.ActualizarServicioAsync(servicio);
         if (!actualizado)
         {
             return NotFound();
         }
 
-        return NoContent();
+        return Ok(servicio);
     }
 
     [HttpDelete("{id}")]
