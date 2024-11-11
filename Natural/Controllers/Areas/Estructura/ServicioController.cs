@@ -13,21 +13,21 @@ public class ServicioController : ControllerBase
         _servicioEstructura = servicioEstructura;
     }
 
-    [HttpPost]
+    [HttpPost("Crear")]
     public async Task<IActionResult> CrearServicio([FromBody] ServicioViewModel servicio)
     {
         var nuevoServicio = await _servicioEstructura.CrearServicioAsync(servicio);
         return CreatedAtAction(nameof(ObtenerServicioPorId), new { id = nuevoServicio.Id }, nuevoServicio);
     }
 
-    [HttpGet]
+    [HttpGet("Obtener")]
     public async Task<IActionResult> ObtenerTodosLosServicios()
     {
         var servicios = await _servicioEstructura.ObtenerTodosLosServicioAsync();
         return Ok(servicios);
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("Obtener/{id}")]
     public async Task<IActionResult> ObtenerServicioPorId(int id)
     {
         var servicio = await _servicioEstructura.ObtenerServicioPorIdAsync(id);
@@ -39,7 +39,7 @@ public class ServicioController : ControllerBase
         return Ok(servicio);
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("Actualizar/{id}")]
     public async Task<IActionResult> ActualizarServicio(int id, [FromBody] ServicioViewModel servicio)
     {
         if (id != servicio.Id)
@@ -56,7 +56,7 @@ public class ServicioController : ControllerBase
         return Ok(servicio);
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("Eliminar/{id}")]
     public async Task<IActionResult> EliminarServicio(int id)
     {
         var eliminado = await _servicioEstructura.EliminarServicioAsync(id);

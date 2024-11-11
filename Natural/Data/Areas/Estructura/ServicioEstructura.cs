@@ -49,7 +49,6 @@ namespace Natural.Data.Areas.Estructura
 
             servicio.Nombre = servicioViewModel.Nombre;
             servicio.Descripcion = servicioViewModel.Descripcion;
-            servicio.FechaCreacion = DateTime.UtcNow;
             servicio.Disponible = servicioViewModel.Disponible;
             servicio.Precio = servicioViewModel.Precio;
 
