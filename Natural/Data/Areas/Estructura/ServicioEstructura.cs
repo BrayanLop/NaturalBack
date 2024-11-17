@@ -13,6 +13,7 @@ namespace Natural.Data.Areas.Estructura
             _context = context;
         }
 
+        #region Servicio
         public async Task<Servicio> CrearServicioAsync(ServicioViewModel servicioViewModel)
         {
             var servicio = new Servicio
@@ -69,5 +70,75 @@ namespace Natural.Data.Areas.Estructura
             await _context.SaveChangesAsync();
             return true;
         }
+
+        #endregion Servicio
+
+        #region Persona
+        public async Task<Persona> CrearPersonaAsync(PersonaViewModel personaViewModel)
+        {
+            var persona = new Persona
+            {
+                Nombre = personaViewModel.Nombre,
+                Apellido = personaViewModel.Apellido,
+                Cedula = personaViewModel.Cedula,
+                Residencia = personaViewModel.Residencia,
+                Email = personaViewModel.Email,
+                Edad = personaViewModel.Edad,
+                Celular = personaViewModel.Celular,
+                FechaNacimiento = personaViewModel.FechaNacimiento,
+            };
+
+            _context.Persona.Add(persona);
+            await _context.SaveChangesAsync();
+            return persona;
+        }
+
+        public async Task<List<Persona>> ObtenerTodasLasPersonasAsync()
+        {
+            return await _context.Persona.ToListAsync();
+        }
+
+        public async Task<Persona> ObtenerPersonaPorIdAsync(int id)
+        {
+            return await _context.Persona.FindAsync(id);
+        }
+
+        public async Task<bool> ActualizarPersonaAsync(PersonaViewModel personaViewModel)
+        {
+            var persona = await _context.Persona.FindAsync(personaViewModel.Id);
+            if (persona == null)
+            {
+                return false;
+            }
+
+            persona.Nombre = personaViewModel.Nombre;
+            persona.Apellido = personaViewModel.Apellido;
+            persona.Cedula = personaViewModel.Cedula;
+            persona.Residencia = personaViewModel.Residencia;
+            persona.Email = personaViewModel.Email;
+            persona.Edad = personaViewModel.Edad;
+            persona.Celular = personaViewModel.Celular;
+            persona.FechaNacimiento = personaViewModel.FechaNacimiento;
+
+            _context.Persona.Update(persona);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> EliminarPersonaAsync(int id)
+        {
+            var persona = await _context.Persona.FindAsync(id);
+            if (persona == null)
+            {
+                return false;
+            }
+
+            _context.Persona.Remove(persona);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        #endregion Persona
+
     }
 }
