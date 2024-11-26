@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Natural.Data.Domain;
+using Natural.Data.Domain.Gestion;
 using Natural.Models.Areas.Estructura;
 
 namespace Natural.Data
@@ -10,6 +11,11 @@ namespace Natural.Data
 
         public DbSet<Servicio> Servicio { get; set; }
         public DbSet<Persona> Persona { get; set; }
-        public DbSet<Natural.Models.Areas.Estructura.PersonaViewModel> PersonaViewModel { get; set; } = default!;
+        public DbSet<RegistroServicio> RegistroServicio { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<RegistroServicio>().ToTable("RegistroServicio");
+        }
     }
 }

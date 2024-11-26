@@ -22,6 +22,35 @@ namespace Natural.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Natural.Data.Domain.Gestion.RegistroServicio", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Cantidad")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PersonaId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ServicioId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Total")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonaId");
+
+                    b.HasIndex("ServicioId");
+
+                    b.ToTable("RegistroServicio", (string)null);
+                });
+
             modelBuilder.Entity("Natural.Data.Domain.Persona", b =>
                 {
                     b.Property<int>("Id")
@@ -93,6 +122,25 @@ namespace Natural.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Servicio");
+                });
+
+            modelBuilder.Entity("Natural.Data.Domain.Gestion.RegistroServicio", b =>
+                {
+                    b.HasOne("Natural.Data.Domain.Persona", "Persona")
+                        .WithMany()
+                        .HasForeignKey("PersonaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Natural.Data.Domain.Servicio", "Servicio")
+                        .WithMany()
+                        .HasForeignKey("ServicioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Persona");
+
+                    b.Navigation("Servicio");
                 });
 #pragma warning restore 612, 618
         }
