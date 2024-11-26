@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Natural.Data;
 using Natural.Data.Areas.Estructura;
+using Natural.Data.Areas.Gestion;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,8 @@ builder.Services.AddDbContext<NaturalDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<ServicioEstructura>();
+
+builder.Services.AddScoped<ServicioGestion>();
 
 // Habilita CORS
 builder.Services.AddCors(options =>
