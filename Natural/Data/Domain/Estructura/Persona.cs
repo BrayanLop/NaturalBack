@@ -1,4 +1,4 @@
-﻿namespace Natural.Data.Domain
+﻿namespace Natural.Data.Domain.Estructura
 {
     public class Persona
     {

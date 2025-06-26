@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
+using Natural.Data.Domain.Estructura;
 
 namespace Natural.Data.Domain.Gestion
 {

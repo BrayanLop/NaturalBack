@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Natural.Data.Domain;
+using Natural.Data.Domain.Estructura;
 using Natural.Data.Domain.Gestion;
 using Natural.Models.Areas.Estructura;
 
