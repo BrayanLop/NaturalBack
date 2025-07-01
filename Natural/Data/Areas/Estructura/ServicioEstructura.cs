@@ -1,6 +1,7 @@
 ﻿using Natural.Data.Domain;
 using Microsoft.EntityFrameworkCore;
 using Natural.Models.Areas.Estructura;
+using Natural.Data.Domain.Estructura;
 
 namespace Natural.Data.Areas.Estructura
 {
