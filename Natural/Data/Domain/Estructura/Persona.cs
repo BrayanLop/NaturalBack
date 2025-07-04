@@ -1,4 +1,5 @@
 ﻿using Natural.Data.Domain.Gestion;
+using Natural.Data.Domain.Sesion;
 
 namespace Natural.Data.Domain.Estructura;
 
@@ -27,4 +28,5 @@ public partial class Persona
     public virtual Empresa? Empresa { get; set; }
 
     public virtual ICollection<RegistroServicio> RegistroServicios { get; set; } = new List<RegistroServicio>();
+    public virtual ICollection<Usuario> Usuario { get; set; } = new List<Usuario>();
 }

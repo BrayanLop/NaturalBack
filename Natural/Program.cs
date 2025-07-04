@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Natural.Data.Areas.Estructura;
 using Natural.Data.Areas.Gestion;
+using Natural.Data.Areas.Sesion;
 using Natural.Data.Domain;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +14,8 @@ builder.Services.AddDbContext<NaturalDbContext>(options =>
 builder.Services.AddScoped<ServicioEstructura>();
 
 builder.Services.AddScoped<ServicioGestion>();
+
+builder.Services.AddScoped<ServicioLogin>();
 
 // Habilita CORS
 builder.Services.AddCors(options =>

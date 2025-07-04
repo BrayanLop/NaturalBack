@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Natural.Data.Domain.Estructura;
 using Natural.Data.Domain.Gestion;
+using Natural.Data.Domain.Sesion;
 
 namespace Natural.Data.Domain;
 
@@ -26,6 +27,8 @@ public partial class NaturalDbContext : DbContext
     public virtual DbSet<Rol> Rol { get; set; }
 
     public virtual DbSet<Servicio> Servicio { get; set; }
+
+    public virtual DbSet<Usuario> Usuario{ get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -126,6 +129,31 @@ public partial class NaturalDbContext : DbContext
             entity.HasOne(d => d.Empresa).WithMany(p => p.Servicios)
                 .HasForeignKey(d => d.EmpresaId)
                 .HasConstraintName("FK_Servicio_Empresa");
+        });
+
+        modelBuilder.Entity<Usuario>(entity =>
+        {
+            entity.ToTable("Usuario");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.NombreUsuario)
+                .HasMaxLength(50)
+                .IsRequired()
+                .IsUnicode(false);
+
+            entity.Property(e => e.ClaveHash)
+                .HasMaxLength(255)
+                .IsRequired()
+                .IsUnicode(false);
+
+            entity.Property(e => e.Estado)
+                .IsRequired();
+
+            entity.HasOne(e => e.Persona)
+                .WithMany(p => p.Usuario)
+                .HasForeignKey(e => e.PersonaId)
+                .HasConstraintName("FK_Usuario_Persona");
         });
 
         OnModelCreatingPartial(modelBuilder);
