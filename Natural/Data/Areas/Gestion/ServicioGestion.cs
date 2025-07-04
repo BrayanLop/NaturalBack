@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Natural.Data.Domain.Gestion;
 using Natural.Models.Areas.Gestion;
+using Natural.Data.Domain;
 
 namespace Natural.Data.Areas.Gestion
 {
@@ -22,7 +23,8 @@ namespace Natural.Data.Areas.Gestion
                     PersonaId = r.PersonaId,
                     ServicioId = r.ServicioId,
                     Cantidad = r.Cantidad,
-                    Total = r.Total
+                    Total = r.Total,
+                    EmpresaId = r.EmpresaId
                 }).ToList();
 
                 await _context.RegistroServicio.AddRangeAsync(registrosEntidad);
@@ -36,10 +38,10 @@ namespace Natural.Data.Areas.Gestion
             }
         }
 
-        public async Task<List<RegistroServicio>> ObtenerRegistrosPorPersonaAsync(int personaId)
+        public async Task<List<RegistroServicio>> ObtenerRegistrosPorPersonaAsync(int empresaId)
         {
             return await _context.RegistroServicio
-                .Where(r => r.PersonaId == personaId)
+                .Where(r => r.EmpresaId == empresaId)
                 .ToListAsync();
         }
     }

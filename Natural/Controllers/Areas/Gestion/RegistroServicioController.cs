@@ -32,9 +32,9 @@ public class RegistroServicioController : ControllerBase
     }
 
     [HttpGet("ObtenerPorPersona/{personaId}")]
-    public async Task<IActionResult> ObtenerRegistrosPorPersona(int personaId)
+    public async Task<IActionResult> ObtenerRegistrosPorPersona(int empresaId)
     {
-        var registros = await _servicioGestion.ObtenerRegistrosPorPersonaAsync(personaId);
+        var registros = await _servicioGestion.ObtenerRegistrosPorPersonaAsync(empresaId);
 
         if (registros == null || registros.Count == 0)
         {

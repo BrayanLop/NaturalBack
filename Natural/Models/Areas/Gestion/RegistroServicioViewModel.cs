@@ -6,5 +6,6 @@
         public int ServicioId { get; set; }
         public int Cantidad { get; set; }
         public decimal Total { get; set; }
+        public int? EmpresaId { get; set; }
     }
 }

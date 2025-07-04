@@ -23,7 +23,8 @@ namespace Natural.Data.Areas.Estructura
                 Descripcion = servicioViewModel.Descripcion,
                 FechaCreacion = DateTime.UtcNow,
                 Disponible = servicioViewModel.Disponible,
-                Precio = servicioViewModel.Precio
+                Precio = servicioViewModel.Precio,
+                EmpresaId = servicioViewModel.EmpresaId
             };
 
             _context.Servicio.Add(servicio);
@@ -31,9 +32,9 @@ namespace Natural.Data.Areas.Estructura
             return servicio;
         }
 
-        public async Task<List<Servicio>> ObtenerTodosLosServicioAsync()
+        public async Task<List<Servicio>> ObtenerTodosLosServicioAsync(int empresaId)
         {
-            return await _context.Servicio.ToListAsync();
+            return await _context.Servicio.Where(q=>q.EmpresaId == empresaId).ToListAsync();
         }
 
         public async Task<Servicio> ObtenerServicioPorIdAsync(int id)
@@ -53,6 +54,7 @@ namespace Natural.Data.Areas.Estructura
             servicio.Descripcion = servicioViewModel.Descripcion;
             servicio.Disponible = servicioViewModel.Disponible;
             servicio.Precio = servicioViewModel.Precio;
+            servicio.EmpresaId = servicioViewModel.EmpresaId;
 
             _context.Servicio.Update(servicio);
             await _context.SaveChangesAsync();
@@ -87,6 +89,7 @@ namespace Natural.Data.Areas.Estructura
                 Edad = personaViewModel.Edad,
                 Celular = personaViewModel.Celular,
                 FechaNacimiento = personaViewModel.FechaNacimiento,
+                EmpresaId = personaViewModel.EmpresaId
             };
 
             _context.Persona.Add(persona);
@@ -94,9 +97,9 @@ namespace Natural.Data.Areas.Estructura
             return persona;
         }
 
-        public async Task<List<Persona>> ObtenerTodasLasPersonasAsync()
+        public async Task<List<Persona>> ObtenerTodasLasPersonasAsync(int empresaId)
         {
-            return await _context.Persona.ToListAsync();
+            return await _context.Persona.Where(q=>q.EmpresaId == empresaId).ToListAsync();
         }
 
         public async Task<Persona> ObtenerPersonaPorIdAsync(int id)
@@ -120,6 +123,7 @@ namespace Natural.Data.Areas.Estructura
             persona.Edad = personaViewModel.Edad;
             persona.Celular = personaViewModel.Celular;
             persona.FechaNacimiento = personaViewModel.FechaNacimiento;
+            persona.EmpresaId = personaViewModel.EmpresaId;
 
             _context.Persona.Update(persona);
             await _context.SaveChangesAsync();

@@ -8,6 +8,7 @@
         public decimal Precio { get; set; }        
         public bool Disponible { get; set; }       
         public DateTime FechaCreacion { get; set; }
+        public int? EmpresaId { get; set; }
     }
 
 }

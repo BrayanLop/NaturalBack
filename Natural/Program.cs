@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using Natural.Data;
 using Natural.Data.Areas.Estructura;
 using Natural.Data.Areas.Gestion;
+using Natural.Data.Domain;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,7 +17,7 @@ builder.Services.AddScoped<ServicioGestion>();
 // Habilita CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowOrigin", builder =>
+    options.AddPolicy("AllowAll", builder =>
     {
         builder.AllowAnyOrigin()
                .AllowAnyMethod()
@@ -40,7 +40,7 @@ if (app.Environment.IsDevelopment())
 }
 
 // Habilita CORS
-app.UseCors("AllowOrigin");
+app.UseCors("AllowAll");
 
 app.UseHttpsRedirection();
 

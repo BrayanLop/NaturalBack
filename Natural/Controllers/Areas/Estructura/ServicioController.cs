@@ -21,9 +21,9 @@ public class ServicioController : ControllerBase
     }
 
     [HttpGet("Obtener")]
-    public async Task<IActionResult> ObtenerTodosLosServicios()
+    public async Task<IActionResult> ObtenerTodosLosServicios(int empresaId)
     {
-        var servicios = await _servicioEstructura.ObtenerTodosLosServicioAsync();
+        var servicios = await _servicioEstructura.ObtenerTodosLosServicioAsync(empresaId);
         return Ok(servicios);
     }
 

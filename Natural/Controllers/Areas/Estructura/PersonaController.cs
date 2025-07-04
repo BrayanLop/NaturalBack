@@ -21,9 +21,9 @@ public class PersonaController : ControllerBase
     }
 
     [HttpGet("Obtener")]
-    public async Task<IActionResult> ObtenerTodasLasPersonas()
+    public async Task<IActionResult> ObtenerTodasLasPersonas(int empresaId)
     {
-        var personas = await _servicioEstructura.ObtenerTodasLasPersonasAsync();
+        var personas = await _servicioEstructura.ObtenerTodasLasPersonasAsync(empresaId);
         return Ok(personas);
     }
 

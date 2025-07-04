@@ -1,24 +1,24 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
-using Natural.Data.Domain.Estructura;
+﻿using Natural.Data.Domain.Estructura;
 
-namespace Natural.Data.Domain.Gestion
+namespace Natural.Data.Domain.Gestion;
+
+public partial class RegistroServicio
 {
-    [Table("RegistroServicio")]
-    public class RegistroServicio
-    {
-        [Key]
-        public int Id { get; set; }
+    public int Id { get; set; }
 
-        public int PersonaId { get; set; }
-        public int ServicioId { get; set; }
-        public int Cantidad { get; set; }
-        public decimal Total { get; set; }
+    public int PersonaId { get; set; }
 
-        [ForeignKey("PersonaId")]
-        public Persona Persona { get; set; }
+    public int ServicioId { get; set; }
 
-        [ForeignKey("ServicioId")]
-        public Servicio Servicio { get; set; }
-    }
+    public int Cantidad { get; set; }
+
+    public decimal Total { get; set; }
+
+    public int? EmpresaId { get; set; }
+
+    public virtual Empresa? Empresa { get; set; }
+
+    public virtual Persona Persona { get; set; } = null!;
+
+    public virtual Servicio Servicio { get; set; } = null!;
 }
