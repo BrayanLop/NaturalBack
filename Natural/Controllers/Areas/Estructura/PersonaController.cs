@@ -16,13 +16,25 @@ public class PersonaController : ControllerBase
     [HttpPost("Crear")]
     public async Task<IActionResult> CrearPersona([FromBody] PersonaViewModel persona)
     {
+        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
+
+        if (!int.TryParse(empresaIdHeader, out int empresaId))
+            return BadRequest("Header 'empresaId' inválido.");
+
+        persona.EmpresaId = empresaId;
+
         var nuevaPersona = await _servicioEstructura.CrearPersonaAsync(persona);
         return CreatedAtAction(nameof(ObtenerPersonaPorId), new { id = nuevaPersona.Id }, nuevaPersona);
     }
 
     [HttpGet("Obtener")]
-    public async Task<IActionResult> ObtenerTodasLasPersonas(int empresaId)
+    public async Task<IActionResult> ObtenerTodasLasPersonas()
     {
+        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
+
+        if (!int.TryParse(empresaIdHeader, out int empresaId))
+            return BadRequest("Header 'empresaId' inválido.");
+
         var personas = await _servicioEstructura.ObtenerTodasLasPersonasAsync(empresaId);
         return Ok(personas);
     }
@@ -46,6 +58,13 @@ public class PersonaController : ControllerBase
         {
             return BadRequest();
         }
+
+        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
+
+        if (!int.TryParse(empresaIdHeader, out int empresaId))
+            return BadRequest("Header 'empresaId' inválido.");
+
+        persona.EmpresaId = empresaId;
 
         var actualizado = await _servicioEstructura.ActualizarPersonaAsync(persona);
         if (!actualizado)

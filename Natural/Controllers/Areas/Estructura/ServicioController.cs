@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Natural.Data.Areas.Estructura;
+using Natural.Data.Domain.Estructura;
 using Natural.Models.Areas.Estructura;
 
 [ApiController]
@@ -16,13 +17,25 @@ public class ServicioController : ControllerBase
     [HttpPost("Crear")]
     public async Task<IActionResult> CrearServicio([FromBody] ServicioViewModel servicio)
     {
+        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
+
+        if (!int.TryParse(empresaIdHeader, out int empresaId))
+            return BadRequest("Header 'empresaId' inválido.");
+
+        servicio.EmpresaId = empresaId;
+
         var nuevoServicio = await _servicioEstructura.CrearServicioAsync(servicio);
         return CreatedAtAction(nameof(ObtenerServicioPorId), new { id = nuevoServicio.Id }, nuevoServicio);
     }
 
     [HttpGet("Obtener")]
-    public async Task<IActionResult> ObtenerTodosLosServicios(int empresaId)
+    public async Task<IActionResult> ObtenerTodosLosServicios()
     {
+        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
+
+        if (!int.TryParse(empresaIdHeader, out int empresaId))
+            return BadRequest("Header 'empresaId' inválido.");
+
         var servicios = await _servicioEstructura.ObtenerTodosLosServicioAsync(empresaId);
         return Ok(servicios);
     }
@@ -46,6 +59,13 @@ public class ServicioController : ControllerBase
         {
             return BadRequest();
         }
+
+        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
+
+        if (!int.TryParse(empresaIdHeader, out int empresaId))
+            return BadRequest("Header 'empresaId' inválido.");
+
+        servicio.EmpresaId = empresaId;
 
         var actualizado = await _servicioEstructura.ActualizarServicioAsync(servicio);
         if (!actualizado)

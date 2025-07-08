@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Natural.Data.Areas.Gestion;
+using Natural.Data.Domain.Estructura;
 using Natural.Models.Areas.Gestion;
 
 [ApiController]
@@ -21,6 +22,13 @@ public class RegistroServicioController : ControllerBase
             return BadRequest("Debe enviar al menos un registro.");
         }
 
+        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
+
+        if (!int.TryParse(empresaIdHeader, out int empresaId))
+            return BadRequest("Header 'empresaId' inválido.");
+
+        registros.ForEach(item => item.EmpresaId = empresaId);
+
         var resultado = await _servicioGestion.GuardarRegistrosServicioAsync(registros);
 
         if (!resultado)
@@ -32,8 +40,13 @@ public class RegistroServicioController : ControllerBase
     }
 
     [HttpGet("ObtenerPorPersona/{personaId}")]
-    public async Task<IActionResult> ObtenerRegistrosPorPersona(int empresaId)
+    public async Task<IActionResult> ObtenerRegistrosPorPersona()
     {
+        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
+
+        if (!int.TryParse(empresaIdHeader, out int empresaId))
+            return BadRequest("Header 'empresaId' inválido.");
+
         var registros = await _servicioGestion.ObtenerRegistrosPorPersonaAsync(empresaId);
 
         if (registros == null || registros.Count == 0)
