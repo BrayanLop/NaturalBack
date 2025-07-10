@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Natural.Data.Domain.Configuracion;
 using Natural.Data.Domain.Estructura;
 using Natural.Data.Domain.Gestion;
 using Natural.Data.Domain.Sesion;
@@ -29,6 +30,7 @@ public partial class NaturalDbContext : DbContext
     public virtual DbSet<Servicio> Servicio { get; set; }
 
     public virtual DbSet<Usuario> Usuario{ get; set; }
+    public virtual DbSet<ConfiguracionServicio> ConfiguracionServicio { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -154,6 +156,42 @@ public partial class NaturalDbContext : DbContext
                 .WithMany(p => p.Usuario)
                 .HasForeignKey(e => e.PersonaId)
                 .HasConstraintName("FK_Usuario_Persona");
+        });
+
+        modelBuilder.Entity<ConfiguracionServicio>(entity =>
+        {
+            entity.ToTable("ConfiguracionServicio");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.PorcentajeTrabajador)
+                .HasColumnType("decimal(5, 2)")
+                .IsRequired();
+
+            entity.Property(e => e.PorcentajeEmpresa)
+                .HasColumnType("decimal(5, 2)")
+                .IsRequired();
+
+            entity.Property(e => e.FechaCreacion)
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("GETDATE()");
+
+            entity.Property(e => e.Estado)
+                .HasDefaultValue(true);
+
+            entity.HasOne(e => e.Empresa)
+                .WithMany(e => e.ConfiguracionServicios)
+                .HasForeignKey(e => e.EmpresaId)
+                .HasConstraintName("FK_ConfiguracionServicio_Empresa");
+
+            entity.HasOne(e => e.Servicio)
+                .WithMany(s => s.ConfiguracionServicios)
+                .HasForeignKey(e => e.ServicioId)
+                .HasConstraintName("FK_ConfiguracionServicio_Servicio");
+
+            entity.HasIndex(e => new { e.EmpresaId, e.ServicioId })
+                .IsUnique()
+                .HasDatabaseName("UX_ConfiguracionServicio_Empresa_Servicio");
         });
 
         OnModelCreatingPartial(modelBuilder);

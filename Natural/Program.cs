@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Natural.Data.Areas.Configuracion;
 using Natural.Data.Areas.Estructura;
 using Natural.Data.Areas.Gestion;
 using Natural.Data.Areas.Sesion;
@@ -16,6 +17,8 @@ builder.Services.AddScoped<ServicioEstructura>();
 builder.Services.AddScoped<ServicioGestion>();
 
 builder.Services.AddScoped<ServicioLogin>();
+
+builder.Services.AddScoped<ServicioConfiguracion>();
 
 // Habilita CORS
 builder.Services.AddCors(options =>

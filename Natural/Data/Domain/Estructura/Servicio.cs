@@ -1,4 +1,5 @@
-﻿using Natural.Data.Domain.Gestion;
+﻿using Natural.Data.Domain.Configuracion;
+using Natural.Data.Domain.Gestion;
 
 namespace Natural.Data.Domain.Estructura;
 
@@ -21,4 +22,6 @@ public partial class Servicio
     public virtual Empresa? Empresa { get; set; }
 
     public virtual ICollection<RegistroServicio> RegistroServicios { get; set; } = new List<RegistroServicio>();
+    public virtual ICollection<ConfiguracionServicio> ConfiguracionServicios { get; set; } = new List<ConfiguracionServicio>();
+
 }
