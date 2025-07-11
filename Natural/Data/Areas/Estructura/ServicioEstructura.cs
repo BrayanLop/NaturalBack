@@ -15,7 +15,8 @@ namespace Natural.Data.Areas.Estructura
         }
 
         #region Servicio
-        public async Task<Servicio> CrearServicioAsync(ServicioViewModel servicioViewModel)
+
+        public async Task<ServicioViewModel> CrearServicioAsync(ServicioViewModel servicioViewModel)
         {
             var servicio = new Servicio
             {
@@ -29,17 +30,40 @@ namespace Natural.Data.Areas.Estructura
 
             _context.Servicio.Add(servicio);
             await _context.SaveChangesAsync();
-            return servicio;
+            return servicioViewModel;
         }
 
-        public async Task<List<Servicio>> ObtenerTodosLosServicioAsync(int empresaId)
+        public async Task<List<ServicioViewModel>> ObtenerTodosLosServicioAsync(int empresaId)
         {
-            return await _context.Servicio.Where(q=>q.EmpresaId == empresaId).ToListAsync();
+            return await _context.Servicio
+                .Where(q => q.EmpresaId == empresaId)
+                .Select(s => new ServicioViewModel
+                {
+                    Id = s.Id,
+                    Nombre = s.Nombre,
+                    Descripcion = s.Descripcion,
+                    EmpresaId = s.EmpresaId,
+                    Precio = s.Precio,
+                    Disponible = s.Disponible
+                })
+                .ToListAsync();
         }
 
-        public async Task<Servicio> ObtenerServicioPorIdAsync(int id)
+        public async Task<ServicioViewModel?> ObtenerServicioPorIdAsync(int id)
         {
-            return await _context.Servicio.FindAsync(id);
+            var servicio = await _context.Servicio.FindAsync(id);
+            if (servicio == null)
+                return null;
+
+            return new ServicioViewModel
+            {
+                Id = servicio.Id,
+                Nombre = servicio.Nombre,
+                Descripcion = servicio.Descripcion,
+                EmpresaId = servicio.EmpresaId,
+                Precio = servicio.Precio,
+                Disponible = servicio.Disponible
+            };
         }
 
         public async Task<bool> ActualizarServicioAsync(ServicioViewModel servicioViewModel)
@@ -77,6 +101,7 @@ namespace Natural.Data.Areas.Estructura
         #endregion Servicio
 
         #region Persona
+
         public async Task<Persona> CrearPersonaAsync(PersonaViewModel personaViewModel)
         {
             var persona = new Persona
@@ -93,18 +118,56 @@ namespace Natural.Data.Areas.Estructura
             };
 
             _context.Persona.Add(persona);
+
+            _context.PersonaRol.Add(new PersonaRol
+            {
+                Persona = persona,
+                RolCodigo = "2" //Empleado
+            });
+
             await _context.SaveChangesAsync();
             return persona;
         }
 
-        public async Task<List<Persona>> ObtenerTodasLasPersonasAsync(int empresaId)
+        public async Task<List<PersonaViewModel>> ObtenerTodasLasPersonasAsync(int empresaId)
         {
-            return await _context.Persona.Where(q=>q.EmpresaId == empresaId).ToListAsync();
+            return await _context.Persona
+                .Where(q => q.EmpresaId == empresaId)
+                .Select(p => new PersonaViewModel
+                {
+                    Id = p.Id,
+                    Nombre = p.Nombre,
+                    Apellido = p.Apellido,
+                    Cedula = p.Cedula,
+                    Residencia = p.Residencia,
+                    Email = p.Email,
+                    Edad = p.Edad,
+                    Celular = p.Celular,
+                    FechaNacimiento = p.FechaNacimiento,
+                    EmpresaId = p.EmpresaId
+                })
+                .ToListAsync();
         }
 
-        public async Task<Persona> ObtenerPersonaPorIdAsync(int id)
+        public async Task<PersonaViewModel?> ObtenerPersonaPorIdAsync(int id)
         {
-            return await _context.Persona.FindAsync(id);
+            var persona = await _context.Persona.FindAsync(id);
+            if (persona == null)
+                return null;
+
+            return new PersonaViewModel
+            {
+                Id = persona.Id,
+                Nombre = persona.Nombre,
+                Apellido = persona.Apellido,
+                Cedula = persona.Cedula,
+                Residencia = persona.Residencia,
+                Email = persona.Email,
+                Edad = persona.Edad,
+                Celular = persona.Celular,
+                FechaNacimiento = persona.FechaNacimiento,
+                EmpresaId = persona.EmpresaId
+            };
         }
 
         public async Task<bool> ActualizarPersonaAsync(PersonaViewModel personaViewModel)

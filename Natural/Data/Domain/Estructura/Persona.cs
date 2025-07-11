@@ -29,4 +29,6 @@ public partial class Persona
 
     public virtual ICollection<RegistroServicio> RegistroServicios { get; set; } = new List<RegistroServicio>();
     public virtual ICollection<Usuario> Usuario { get; set; } = new List<Usuario>();
+    public virtual ICollection<Rol> Rol { get; set; } = new List<Rol>();
+
 }

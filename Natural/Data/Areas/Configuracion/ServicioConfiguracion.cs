@@ -13,9 +13,10 @@ namespace Natural.Data.Areas.Configuracion
         {
             _context = context;
         }
+
         #region ConfiguracionServicio
 
-        public async Task<ConfiguracionServicio> CrearConfiguracionServicioAsync(ConfiguracionServicioViewModel model)
+        public async Task<ConfiguracionServicioViewModel> CrearConfiguracionServicioAsync(ConfiguracionServicioViewModel model)
         {
             if (model.PorcentajeTrabajador + model.PorcentajeEmpresa > 100)
                 throw new ArgumentException("La suma de los porcentajes no puede superar el 100%");
@@ -39,7 +40,18 @@ namespace Natural.Data.Areas.Configuracion
             _context.ConfiguracionServicio.Add(config);
             await _context.SaveChangesAsync();
 
-            return config;
+            // Obtener info completa para retornar
+            var servicio = await _context.Servicio.FindAsync(model.ServicioId);
+
+            return new ConfiguracionServicioViewModel
+            {
+                Id = config.Id,
+                EmpresaId = config.EmpresaId,
+                ServicioId = config.ServicioId,
+                PorcentajeTrabajador = config.PorcentajeTrabajador,
+                PorcentajeEmpresa = config.PorcentajeEmpresa,
+                Estado = config.Estado,
+            };
         }
 
         public async Task<bool> ActualizarConfiguracionServicioAsync(ConfiguracionServicioViewModel model)
@@ -62,19 +74,39 @@ namespace Natural.Data.Areas.Configuracion
             return true;
         }
 
-        public async Task<ConfiguracionServicio?> ObtenerConfiguracionPorIdAsync(int id)
+        public async Task<ConfiguracionServicioViewModel?> ObtenerConfiguracionPorIdAsync(int id)
         {
             return await _context.ConfiguracionServicio
                 .Include(c => c.Servicio)
-                .Include(c => c.Empresa)
-                .FirstOrDefaultAsync(c => c.Id == id);
+                .Where(c => c.Id == id)
+                .Select(c => new ConfiguracionServicioViewModel
+                {
+                    Id = c.Id,
+                    EmpresaId = c.EmpresaId,
+                    ServicioId = c.ServicioId,
+                    PorcentajeTrabajador = c.PorcentajeTrabajador,
+                    PorcentajeEmpresa = c.PorcentajeEmpresa,
+                    Estado = c.Estado,
+                    NombreServicio = c.Servicio.Nombre
+                })
+                .FirstOrDefaultAsync();
         }
 
-        public async Task<List<ConfiguracionServicio>> ObtenerConfiguracionesPorEmpresaAsync(int empresaId)
+        public async Task<List<ConfiguracionServicioViewModel>> ObtenerConfiguracionesPorEmpresaAsync(int empresaId)
         {
             return await _context.ConfiguracionServicio
                 .Where(c => c.EmpresaId == empresaId)
                 .Include(c => c.Servicio)
+                .Select(c => new ConfiguracionServicioViewModel
+                {
+                    Id = c.Id,
+                    EmpresaId = c.EmpresaId,
+                    ServicioId = c.ServicioId,
+                    PorcentajeTrabajador = c.PorcentajeTrabajador,
+                    PorcentajeEmpresa = c.PorcentajeEmpresa,
+                    Estado = c.Estado,
+                    NombreServicio = c.Servicio.Nombre
+                })
                 .ToListAsync();
         }
 
@@ -90,6 +122,5 @@ namespace Natural.Data.Areas.Configuracion
         }
 
         #endregion ConfiguracionServicio
-
     }
 }

@@ -13,5 +13,7 @@
         public decimal PorcentajeEmpresa { get; set; }
 
         public bool Estado { get; set; }
+
+        public string? NombreServicio { get; set; }
     }
 }

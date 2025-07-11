@@ -38,10 +38,23 @@ namespace Natural.Data.Areas.Gestion
             }
         }
 
-        public async Task<List<RegistroServicio>> ObtenerRegistrosPorPersonaAsync(int empresaId)
+        public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosPorPersonaAsync(int empresaId)
         {
             return await _context.RegistroServicio
                 .Where(r => r.EmpresaId == empresaId)
+                .Include(r => r.Persona)
+                .Include(r => r.Servicio)
+                .Select(r => new RegistroServicioViewModel
+                {
+                    Id = r.Id,
+                    PersonaId = r.PersonaId,
+                    ServicioId = r.ServicioId,
+                    Cantidad = r.Cantidad,
+                    Total = r.Total,
+                    EmpresaId = r.EmpresaId,
+                    NombrePersona = r.Persona != null ? r.Persona.Nombre + " " + r.Persona.Apellido : null,
+                    NombreServicio = r.Servicio != null ? r.Servicio.Nombre : null
+                })
                 .ToListAsync();
         }
     }
