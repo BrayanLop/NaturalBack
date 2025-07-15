@@ -21,4 +21,5 @@ public partial class RegistroServicio
     public virtual Persona Persona { get; set; } = null!;
 
     public virtual Servicio Servicio { get; set; } = null!;
+    public DateTime? FechaServicio { get; set; }
 }

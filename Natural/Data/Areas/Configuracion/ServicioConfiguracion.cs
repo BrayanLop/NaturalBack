@@ -67,6 +67,7 @@ namespace Natural.Data.Areas.Configuracion
             config.PorcentajeTrabajador = model.PorcentajeTrabajador;
             config.PorcentajeEmpresa = model.PorcentajeEmpresa;
             config.Estado = model.Estado;
+            config.ServicioId = model.ServicioId;
 
             _context.ConfiguracionServicio.Update(config);
             await _context.SaveChangesAsync();

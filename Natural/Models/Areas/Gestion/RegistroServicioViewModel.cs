@@ -10,5 +10,6 @@
         public int? EmpresaId { get; set; }
         public string? NombrePersona { get; set; }
         public string? NombreServicio { get; set; }
+        public DateTime? FechaServicio { get; set; }
     }
 }

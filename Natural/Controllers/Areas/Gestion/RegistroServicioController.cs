@@ -39,15 +39,15 @@ public class RegistroServicioController : ControllerBase
         return Ok("Registros guardados correctamente.");
     }
 
-    [HttpGet("ObtenerPorPersona/{personaId}")]
-    public async Task<IActionResult> ObtenerRegistrosPorPersona()
+    [HttpGet("ObtenerRegistros")]
+    public async Task<IActionResult> ObtenerRegistros()
     {
         var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
 
         if (!int.TryParse(empresaIdHeader, out int empresaId))
             return BadRequest("Header 'empresaId' inválido.");
 
-        var registros = await _servicioGestion.ObtenerRegistrosPorPersonaAsync(empresaId);
+        var registros = await _servicioGestion.ObtenerRegistrosAsync(empresaId);
 
         if (registros == null || registros.Count == 0)
         {

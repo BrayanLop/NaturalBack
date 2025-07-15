@@ -24,8 +24,9 @@ namespace Natural.Data.Areas.Gestion
                     ServicioId = r.ServicioId,
                     Cantidad = r.Cantidad,
                     Total = r.Total,
-                    EmpresaId = r.EmpresaId
-                }).ToList();
+                    EmpresaId = r.EmpresaId,
+                    FechaServicio = DateTime.UtcNow.AddHours(-5)
+                }).OrderBy(q=>q.FechaServicio).ToList();
 
                 await _context.RegistroServicio.AddRangeAsync(registrosEntidad);
                 await _context.SaveChangesAsync();
@@ -38,7 +39,7 @@ namespace Natural.Data.Areas.Gestion
             }
         }
 
-        public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosPorPersonaAsync(int empresaId)
+        public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosAsync(int empresaId)
         {
             return await _context.RegistroServicio
                 .Where(r => r.EmpresaId == empresaId)
@@ -53,7 +54,8 @@ namespace Natural.Data.Areas.Gestion
                     Total = r.Total,
                     EmpresaId = r.EmpresaId,
                     NombrePersona = r.Persona != null ? r.Persona.Nombre + " " + r.Persona.Apellido : null,
-                    NombreServicio = r.Servicio != null ? r.Servicio.Nombre : null
+                    NombreServicio = r.Servicio != null ? r.Servicio.Nombre : null,
+                    FechaServicio = r.FechaServicio
                 })
                 .ToListAsync();
         }
