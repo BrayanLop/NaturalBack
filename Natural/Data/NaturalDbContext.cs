@@ -97,8 +97,6 @@ public partial class NaturalDbContext : DbContext
 
             entity.HasIndex(e => e.ServicioId, "IX_RegistroServicio_ServicioId");
 
-            entity.Property(e => e.Total).HasColumnType("decimal(18, 2)");
-
             entity.HasOne(d => d.Empresa).WithMany(p => p.RegistroServicios)
                 .HasForeignKey(d => d.EmpresaId)
                 .HasConstraintName("FK_RegistroServicio_Empresa");

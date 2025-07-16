@@ -10,10 +10,6 @@ public partial class RegistroServicio
 
     public int ServicioId { get; set; }
 
-    public int Cantidad { get; set; }
-
-    public decimal Total { get; set; }
-
     public int? EmpresaId { get; set; }
 
     public virtual Empresa? Empresa { get; set; }

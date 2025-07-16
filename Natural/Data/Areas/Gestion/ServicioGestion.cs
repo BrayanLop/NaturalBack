@@ -22,8 +22,6 @@ namespace Natural.Data.Areas.Gestion
                 {
                     PersonaId = r.PersonaId,
                     ServicioId = r.ServicioId,
-                    Cantidad = r.Cantidad,
-                    Total = r.Total,
                     EmpresaId = r.EmpresaId,
                     FechaServicio = DateTime.UtcNow.AddHours(-5)
                 }).OrderBy(q=>q.FechaServicio).ToList();
@@ -50,12 +48,68 @@ namespace Natural.Data.Areas.Gestion
                     Id = r.Id,
                     PersonaId = r.PersonaId,
                     ServicioId = r.ServicioId,
-                    Cantidad = r.Cantidad,
-                    Total = r.Total,
                     EmpresaId = r.EmpresaId,
                     NombrePersona = r.Persona != null ? r.Persona.Nombre + " " + r.Persona.Apellido : null,
                     NombreServicio = r.Servicio != null ? r.Servicio.Nombre : null,
                     FechaServicio = r.FechaServicio
+                })
+                .ToListAsync();
+        }
+
+        public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosFechaActualAsync(int empresaId)
+        {
+            return await _context.RegistroServicio
+                .Where(r => r.EmpresaId == empresaId && r.FechaServicio.Value.Date == DateTime.Today)
+                .Include(r => r.Persona)
+                .Include(r => r.Servicio)
+                .Select(r => new RegistroServicioViewModel
+                {
+                    Id = r.Id,
+                    PersonaId = r.PersonaId,
+                    ServicioId = r.ServicioId,
+                    EmpresaId = r.EmpresaId,
+                    NombrePersona = r.Persona != null ? r.Persona.Nombre + " " + r.Persona.Apellido : null,
+                    NombreServicio = r.Servicio != null ? r.Servicio.Nombre : null,
+                    FechaServicio = r.FechaServicio
+                })
+                .ToListAsync();
+        }
+
+        public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosFechaActualPersonaAsync(int empresaId, int personaId)
+        {
+            return await _context.RegistroServicio
+                .Where(r => r.EmpresaId == empresaId && r.FechaServicio.Value.Date == DateTime.Today && r.PersonaId == personaId)
+                .Include(r => r.Persona)
+                .Include(r => r.Servicio)
+                .Select(r => new RegistroServicioViewModel
+                {
+                    Id = r.Id,
+                    PersonaId = r.PersonaId,
+                    ServicioId = r.ServicioId,
+                    EmpresaId = r.EmpresaId,
+                    NombrePersona = r.Persona != null ? r.Persona.Nombre + " " + r.Persona.Apellido : null,
+                    NombreServicio = r.Servicio != null ? r.Servicio.Nombre : null,
+                    FechaServicio = r.FechaServicio
+                })
+                .ToListAsync();
+        }
+
+        public async Task<List<ConsolidadoDiaViewModel>> ObtenerConsolidadoDiaAsync(int empresaId)
+        {
+            var hoy = DateTime.Today;
+
+            return await _context.RegistroServicio
+                .Where(r =>
+                    r.EmpresaId == empresaId &&
+                    r.FechaServicio.HasValue &&
+                    r.FechaServicio.Value.Date == hoy
+                )
+                .GroupBy(r => new { r.PersonaId, NombrePersona = r.Persona.Nombre + " " + r.Persona.Apellido })
+                .Select(g => new ConsolidadoDiaViewModel
+                {
+                    PersonaId = g.Key.PersonaId,
+                    NombrePersona = g.Key.NombrePersona,
+                    CantidadServicios = g.Count()
                 })
                 .ToListAsync();
         }
