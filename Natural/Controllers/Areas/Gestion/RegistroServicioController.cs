@@ -48,11 +48,6 @@ public class RegistroServicioController : ControllerBase
 
         var registros = await _servicioGestion.ObtenerRegistrosFechaActualAsync(empresaId);
 
-        if (registros == null || registros.Count == 0)
-        {
-            return NotFound("No se encontraron registros para esta persona.");
-        }
-
         return Ok(registros);
     }
 
@@ -88,10 +83,6 @@ public class RegistroServicioController : ControllerBase
 
         var consolidado = await _servicioGestion.ObtenerConsolidadoDiaAsync(empresaId);
 
-        if (consolidado == null || consolidado.Count == 0)
-            return NotFound("No hay registros para hoy.");
-
         return Ok(consolidado);
     }
-
 }

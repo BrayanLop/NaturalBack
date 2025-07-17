@@ -23,7 +23,8 @@ namespace Natural.Data.Areas.Gestion
                     PersonaId = r.PersonaId,
                     ServicioId = r.ServicioId,
                     EmpresaId = r.EmpresaId,
-                    FechaServicio = DateTime.UtcNow.AddHours(-5)
+                    FechaServicio = DateTime.UtcNow.AddHours(-5),
+                    Liquidado = false
                 }).OrderBy(q=>q.FechaServicio).ToList();
 
                 await _context.RegistroServicio.AddRangeAsync(registrosEntidad);

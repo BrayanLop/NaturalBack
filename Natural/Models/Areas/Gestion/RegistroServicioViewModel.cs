@@ -11,5 +11,6 @@
         public string? NombrePersona { get; set; }
         public string? NombreServicio { get; set; }
         public DateTime? FechaServicio { get; set; }
+        public bool Liquidado { get; set; }
     }
 }

@@ -18,4 +18,6 @@ public partial class RegistroServicio
 
     public virtual Servicio Servicio { get; set; } = null!;
     public DateTime? FechaServicio { get; set; }
+    public bool Liquidado { get; set; }
+
 }
