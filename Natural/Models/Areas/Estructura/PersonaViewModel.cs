@@ -12,6 +12,7 @@
         public string? Celular { get; set; }
         public DateTime FechaNacimiento { get; set; }
         public int? EmpresaId { get; set; }
+        public string Rol { get; set; }
     }
 
 }

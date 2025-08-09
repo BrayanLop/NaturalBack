@@ -36,7 +36,8 @@ namespace Natural.Controllers.Areas.Sesion
             {
                 id = persona.Id,
                 nombre = persona.Nombre,
-                empresaId = persona.EmpresaId
+                empresaId = persona.EmpresaId,
+                rol = persona.Rol
             };
 
             return Ok(response);
