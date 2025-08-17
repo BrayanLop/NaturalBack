@@ -68,6 +68,7 @@ namespace Natural.Data.Areas.Contabilidad
 
                         return new PagoPersonaViewModel
                         {
+                            PersonaId = grupoPersona.Key.PersonaId,
                             NombrePersona = $"{grupoPersona.Key.Nombre} {grupoPersona.Key.Apellido}",
                             TotalPagado = total,
                             Servicios = detallesServicio
@@ -100,7 +101,7 @@ namespace Natural.Data.Areas.Contabilidad
             var agrupadoPorFecha = registros
                 .GroupBy(r => r.FechaServicio.Value.Date)
                 .Select(g => new DetalleServicioPorDiaViewModel
-                {
+                {                    
                     Fecha = g.Key,
                     TotalServicios = g.Count(),
                     Servicios = g.Select(s => new ServicioDetalleItem

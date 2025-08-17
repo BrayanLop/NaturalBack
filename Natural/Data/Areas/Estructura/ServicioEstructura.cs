@@ -166,7 +166,7 @@ namespace Natural.Data.Areas.Estructura
                 Edad = persona.Edad,
                 Celular = persona.Celular,
                 FechaNacimiento = persona.FechaNacimiento,
-                EmpresaId = persona.EmpresaId,
+                EmpresaId = persona.EmpresaId
             };
         }
 
