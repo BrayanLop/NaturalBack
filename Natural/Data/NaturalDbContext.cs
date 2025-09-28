@@ -18,45 +18,36 @@ public partial class NaturalDbContext : DbContext
     }
 
     public virtual DbSet<Empresa> Empresa { get; set; }
-
     public virtual DbSet<Persona> Persona { get; set; }
-
     public virtual DbSet<PersonaRol> PersonaRol { get; set; }
-
     public virtual DbSet<RegistroServicio> RegistroServicio { get; set; }
-
     public virtual DbSet<Rol> Rol { get; set; }
-
     public virtual DbSet<Servicio> Servicio { get; set; }
-
-    public virtual DbSet<Usuario> Usuario{ get; set; }
+    public virtual DbSet<Usuario> Usuario { get; set; }
     public virtual DbSet<ConfiguracionServicio> ConfiguracionServicio { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=localhost;Database=NaturalDb;Trusted_Connection=True;TrustServerCertificate=True;");
+    {
+#warning Para proteger tu cadena de conexión, muévela a appsettings.json o variables de entorno.
+        if (!optionsBuilder.IsConfigured)
+        {
+             optionsBuilder.UseNpgsql("User Id=postgres.rsnemoylcmbfpsirflly;Password=Losdelsur99*;Server=aws-0-us-east-1.pooler.supabase.com;Port=5432;Database=postgres;SSL Mode=Require;Trust Server Certificate=true"); 
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Empresa>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Empresa__3214EC07EB48E8ED");
+            entity.HasKey(e => e.Id).HasName("PK_Empresa");
 
             entity.ToTable("Empresa");
 
             entity.Property(e => e.Id).ValueGeneratedNever();
-            entity.Property(e => e.Direccion)
-                .HasMaxLength(200)
-                .IsUnicode(false);
-            entity.Property(e => e.Nit)
-                .HasMaxLength(20)
-                .IsUnicode(false);
-            entity.Property(e => e.Nombre)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.Telefono)
-                .HasMaxLength(20)
-                .IsUnicode(false);
+            entity.Property(e => e.Direccion).HasMaxLength(200);
+            entity.Property(e => e.Nit).HasMaxLength(20);
+            entity.Property(e => e.Nombre).HasMaxLength(100);
+            entity.Property(e => e.Telefono).HasMaxLength(20);
         });
 
         modelBuilder.Entity<Persona>(entity =>
@@ -70,13 +61,9 @@ public partial class NaturalDbContext : DbContext
 
         modelBuilder.Entity<PersonaRol>(entity =>
         {
-            entity
-                .HasNoKey()
-                .ToTable("PersonaRol");
+            entity.HasNoKey().ToTable("PersonaRol");
 
-            entity.Property(e => e.RolCodigo)
-                .HasMaxLength(10)
-                .IsUnicode(false);
+            entity.Property(e => e.RolCodigo).HasMaxLength(10);
 
             entity.HasOne(d => d.Persona).WithMany()
                 .HasForeignKey(d => d.PersonaId)
@@ -94,37 +81,33 @@ public partial class NaturalDbContext : DbContext
             entity.ToTable("RegistroServicio");
 
             entity.HasIndex(e => e.PersonaId, "IX_RegistroServicio_PersonaId");
-
             entity.HasIndex(e => e.ServicioId, "IX_RegistroServicio_ServicioId");
 
             entity.HasOne(d => d.Empresa).WithMany(p => p.RegistroServicios)
                 .HasForeignKey(d => d.EmpresaId)
                 .HasConstraintName("FK_RegistroServicio_Empresa");
 
-            entity.HasOne(d => d.Persona).WithMany(p => p.RegistroServicios).HasForeignKey(d => d.PersonaId);
+            entity.HasOne(d => d.Persona).WithMany(p => p.RegistroServicios)
+                .HasForeignKey(d => d.PersonaId);
 
-            entity.HasOne(d => d.Servicio).WithMany(p => p.RegistroServicios).HasForeignKey(d => d.ServicioId);
+            entity.HasOne(d => d.Servicio).WithMany(p => p.RegistroServicios)
+                .HasForeignKey(d => d.ServicioId);
         });
 
         modelBuilder.Entity<Rol>(entity =>
         {
             entity.HasKey(e => e.Codigo);
-
             entity.ToTable("Rol");
 
-            entity.Property(e => e.Codigo)
-                .HasMaxLength(10)
-                .IsUnicode(false);
-            entity.Property(e => e.Nombre)
-                .HasMaxLength(50)
-                .IsUnicode(false);
+            entity.Property(e => e.Codigo).HasMaxLength(10);
+            entity.Property(e => e.Nombre).HasMaxLength(50);
         });
 
         modelBuilder.Entity<Servicio>(entity =>
         {
             entity.ToTable("Servicio");
 
-            entity.Property(e => e.Precio).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Precio).HasColumnType("numeric(18, 2)");
 
             entity.HasOne(d => d.Empresa).WithMany(p => p.Servicios)
                 .HasForeignKey(d => d.EmpresaId)
@@ -139,16 +122,13 @@ public partial class NaturalDbContext : DbContext
 
             entity.Property(e => e.NombreUsuario)
                 .HasMaxLength(50)
-                .IsRequired()
-                .IsUnicode(false);
+                .IsRequired();
 
             entity.Property(e => e.ClaveHash)
                 .HasMaxLength(255)
-                .IsRequired()
-                .IsUnicode(false);
-
-            entity.Property(e => e.Estado)
                 .IsRequired();
+
+            entity.Property(e => e.Estado).IsRequired();
 
             entity.HasOne(e => e.Persona)
                 .WithMany(p => p.Usuario)
@@ -163,16 +143,16 @@ public partial class NaturalDbContext : DbContext
             entity.HasKey(e => e.Id);
 
             entity.Property(e => e.PorcentajeTrabajador)
-                .HasColumnType("decimal(5, 2)")
+                .HasColumnType("numeric(5, 2)")
                 .IsRequired();
 
             entity.Property(e => e.PorcentajeEmpresa)
-                .HasColumnType("decimal(5, 2)")
+                .HasColumnType("numeric(5, 2)")
                 .IsRequired();
 
             entity.Property(e => e.FechaCreacion)
-                .HasColumnType("datetime")
-                .HasDefaultValueSql("GETDATE()");
+                .HasColumnType("timestamp")
+                .HasDefaultValueSql("NOW()");
 
             entity.Property(e => e.Estado)
                 .HasDefaultValue(true);
