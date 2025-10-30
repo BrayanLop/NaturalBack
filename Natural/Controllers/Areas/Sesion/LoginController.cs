@@ -30,6 +30,7 @@ namespace Natural.Controllers.Areas.Sesion
                 return Unauthorized("Usuario no encontrado");
 
             var persona = await _servicioEstructura.ObtenerPersonaPorIdAsync(usuario.PersonaId);
+            var rol = await _servicioEstructura.ObtenerRol(usuario.PersonaId);
 
             // Solo devolver lo necesario
             var response = new
@@ -37,7 +38,7 @@ namespace Natural.Controllers.Areas.Sesion
                 id = persona.Id,
                 nombre = persona.Nombre,
                 empresaId = persona.EmpresaId,
-                rol = persona.Rol
+                rol = rol
             };
 
             return Ok(response);

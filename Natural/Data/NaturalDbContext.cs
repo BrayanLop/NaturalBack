@@ -61,16 +61,20 @@ public partial class NaturalDbContext : DbContext
 
         modelBuilder.Entity<PersonaRol>(entity =>
         {
-            entity.HasNoKey().ToTable("PersonaRol");
+            entity.ToTable("PersonaRol");
+
+            entity.HasKey(e => new { e.PersonaId, e.RolCodigo });
 
             entity.Property(e => e.RolCodigo).HasMaxLength(10);
 
-            entity.HasOne(d => d.Persona).WithMany()
+            entity.HasOne(d => d.Persona)
+                .WithMany()
                 .HasForeignKey(d => d.PersonaId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_PersonaRol_Persona");
 
-            entity.HasOne(d => d.RolCodigoNavigation).WithMany()
+            entity.HasOne(d => d.RolCodigoNavigation)
+                .WithMany()
                 .HasForeignKey(d => d.RolCodigo)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_PersonaRol_Rol");

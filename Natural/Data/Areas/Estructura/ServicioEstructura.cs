@@ -113,19 +113,22 @@ namespace Natural.Data.Areas.Estructura
                 Email = personaViewModel.Email,
                 Edad = personaViewModel.Edad,
                 Celular = personaViewModel.Celular,
-                FechaNacimiento = personaViewModel.FechaNacimiento,
-                EmpresaId = personaViewModel.EmpresaId
+                FechaNacimiento = DateTime.SpecifyKind(personaViewModel.FechaNacimiento, DateTimeKind.Utc),
+                EmpresaId = personaViewModel.EmpresaId,
             };
 
             _context.Persona.Add(persona);
-
-            _context.PersonaRol.Add(new PersonaRol
-            {
-                Persona = persona,
-                RolCodigo = "2" //Empleado
-            });
-
             await _context.SaveChangesAsync();
+
+            var personaRol = new PersonaRol
+            {
+                PersonaId = persona.Id,
+                RolCodigo = personaViewModel.Rol
+            };
+
+            _context.PersonaRol.Add(personaRol);
+            await _context.SaveChangesAsync();
+
             return persona;
         }
 
@@ -185,7 +188,7 @@ namespace Natural.Data.Areas.Estructura
             persona.Email = personaViewModel.Email;
             persona.Edad = personaViewModel.Edad;
             persona.Celular = personaViewModel.Celular;
-            persona.FechaNacimiento = personaViewModel.FechaNacimiento;
+            persona.FechaNacimiento = DateTime.SpecifyKind(personaViewModel.FechaNacimiento, DateTimeKind.Utc);
             persona.EmpresaId = personaViewModel.EmpresaId;
 
             _context.Persona.Update(persona);
@@ -208,5 +211,18 @@ namespace Natural.Data.Areas.Estructura
 
         #endregion Persona
 
+        #region Rol
+
+
+        public async Task<string?> ObtenerRol(int personaId)
+        {
+            var rol = await (from pr in _context.PersonaRol
+                             join r in _context.Rol on pr.RolCodigo equals r.Codigo
+                             where pr.PersonaId == personaId
+                             select r.Codigo).FirstOrDefaultAsync();
+            return rol;
+        }
+
+        #endregion Rol
     }
 }

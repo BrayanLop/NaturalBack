@@ -48,13 +48,21 @@ public class PersonaController : ControllerBase
             return NotFound();
         }
 
+        var rol = await _servicioEstructura.ObtenerRol(id);
+        if (rol == null)
+        {
+            return NotFound();
+        }
+
+        persona.Rol = rol;  
+
         return Ok(persona);
     }
 
     [HttpPut("Actualizar/{id}")]
     public async Task<IActionResult> ActualizarPersona(int id, [FromBody] PersonaViewModel persona)
     {
-        if (id != persona.Id)
+        if (id == 0 && id != persona.Id)
         {
             return BadRequest();
         }
@@ -65,6 +73,7 @@ public class PersonaController : ControllerBase
             return BadRequest("Header 'empresaId' inválido.");
 
         persona.EmpresaId = empresaId;
+        persona.Id = id;
 
         var actualizado = await _servicioEstructura.ActualizarPersonaAsync(persona);
         if (!actualizado)
