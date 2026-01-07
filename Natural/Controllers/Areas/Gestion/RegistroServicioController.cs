@@ -39,14 +39,14 @@ public class RegistroServicioController : ControllerBase
     }
 
     [HttpGet("ObtenerRegistros")]
-    public async Task<IActionResult> ObtenerRegistros()
+    public async Task<IActionResult> ObtenerRegistros([FromQuery] int? personaId)
     {
         var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
 
         if (!int.TryParse(empresaIdHeader, out int empresaId))
             return BadRequest("Header 'empresaId' inválido.");
 
-        var registros = await _servicioGestion.ObtenerRegistrosFechaActualAsync(empresaId);
+        var registros = await _servicioGestion.ObtenerRegistrosFechaActualAsync(empresaId, personaId ?? 0);
 
         return Ok(registros);
     }
@@ -74,14 +74,14 @@ public class RegistroServicioController : ControllerBase
     }
 
     [HttpGet("ObtenerConsolidadoDia")]
-    public async Task<IActionResult> ObtenerConsolidadoDia()
+    public async Task<IActionResult> ObtenerConsolidadoDia([FromQuery] int? personaId)
     {
         var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
 
         if (!int.TryParse(empresaIdHeader, out int empresaId))
             return BadRequest("Header 'empresaId' inválido.");
 
-        var consolidado = await _servicioGestion.ObtenerConsolidadoDiaAsync(empresaId);
+        var consolidado = await _servicioGestion.ObtenerConsolidadoDiaAsync(empresaId, personaId ?? 0);
 
         return Ok(consolidado);
     }

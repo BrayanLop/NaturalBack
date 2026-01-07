@@ -25,7 +25,7 @@ namespace Natural.Data.Areas.Gestion
                     EmpresaId = r.EmpresaId,
                     FechaServicio = DateTime.UtcNow,
                     Liquidado = false
-                }).OrderBy(q=>q.FechaServicio).ToList();
+                }).OrderBy(q => q.FechaServicio).ToList();
 
                 await _context.RegistroServicio.AddRangeAsync(registrosEntidad);
                 await _context.SaveChangesAsync();
@@ -57,15 +57,31 @@ namespace Natural.Data.Areas.Gestion
                 .ToListAsync();
         }
 
-        public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosFechaActualAsync(int empresaId)
+        public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosFechaActualAsync(
+            int empresaId,
+            int personaId)
         {
             var hoyUtc = DateTime.UtcNow.Date;
             var mananaUtc = hoyUtc.AddDays(1);
 
-            var registros = await _context.RegistroServicio
-                .Where(r => r.EmpresaId == empresaId
-                            && r.FechaServicio >= hoyUtc
-                            && r.FechaServicio < mananaUtc)
+            var personaRol = await _context.PersonaRol
+                .Where(pr => pr.PersonaId == personaId)
+                .Select(pr => pr.RolCodigo)
+                .FirstOrDefaultAsync();
+
+            IQueryable<RegistroServicio> query = _context.RegistroServicio
+                .Where(r =>
+                    r.EmpresaId == empresaId &&
+                    r.FechaServicio >= hoyUtc &&
+                    r.FechaServicio < mananaUtc
+                );
+
+            if (personaRol != "01")
+            {
+                query = query.Where(r => r.PersonaId == personaId);
+            }
+
+            return await query
                 .Include(r => r.Persona)
                 .Include(r => r.Servicio)
                 .Select(r => new RegistroServicioViewModel
@@ -74,13 +90,15 @@ namespace Natural.Data.Areas.Gestion
                     PersonaId = r.PersonaId,
                     ServicioId = r.ServicioId,
                     EmpresaId = r.EmpresaId,
-                    NombrePersona = r.Persona != null ? r.Persona.Nombre + " " + r.Persona.Apellido : null,
-                    NombreServicio = r.Servicio != null ? r.Servicio.Nombre : null,
+                    NombrePersona = r.Persona != null
+                        ? r.Persona.Nombre + " " + r.Persona.Apellido
+                        : null,
+                    NombreServicio = r.Servicio != null
+                        ? r.Servicio.Nombre
+                        : null,
                     FechaServicio = r.FechaServicio
                 })
                 .ToListAsync();
-
-            return registros;
         }
 
         public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosFechaActualPersonaAsync(int empresaId, int personaId)
@@ -102,20 +120,37 @@ namespace Natural.Data.Areas.Gestion
                 .ToListAsync();
         }
 
-        public async Task<List<ConsolidadoDiaViewModel>> ObtenerConsolidadoDiaAsync(int empresaId)
+        public async Task<List<ConsolidadoDiaViewModel>> ObtenerConsolidadoDiaAsync(
+            int empresaId,
+            int personaId)
         {
-            // Obtenemos el rango del día actual en UTC
             var hoyUtc = DateTime.UtcNow.Date;
             var mananaUtc = hoyUtc.AddDays(1);
 
-            return await _context.RegistroServicio
+            var personaRol = await _context.PersonaRol
+                .Where(pr => pr.PersonaId == personaId)
+                .Select(pr => pr.RolCodigo)
+                .FirstOrDefaultAsync();
+
+            IQueryable<RegistroServicio> query = _context.RegistroServicio
                 .Where(r =>
                     r.EmpresaId == empresaId &&
                     r.FechaServicio >= hoyUtc &&
                     r.FechaServicio < mananaUtc
-                )
-                .Include(r => r.Persona) // necesario para concatenar el nombre
-                .GroupBy(r => new { r.PersonaId, NombrePersona = r.Persona.Nombre + " " + r.Persona.Apellido })
+                );
+
+            if (personaRol != "01")
+            {
+                query = query.Where(r => r.PersonaId == personaId);
+            }
+
+            return await query
+                .Include(r => r.Persona)
+                .GroupBy(r => new
+                {
+                    r.PersonaId,
+                    NombrePersona = r.Persona.Nombre + " " + r.Persona.Apellido
+                })
                 .Select(g => new ConsolidadoDiaViewModel
                 {
                     PersonaId = g.Key.PersonaId,
