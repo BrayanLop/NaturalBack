@@ -154,9 +154,9 @@ public partial class NaturalDbContext : DbContext
                 .HasColumnType("numeric(5, 2)")
                 .IsRequired();
 
-            entity.Property(e => e.FechaCreacion)
-                .HasColumnType("timestamp")
-                .HasDefaultValueSql("NOW()");
+            //entity.Property(e => e.FechaCreacion)
+            //    .HasColumnType("timestamp")
+            //    .HasDefaultValueSql("NOW()");
 
             entity.Property(e => e.Estado)
                 .HasDefaultValue(true);

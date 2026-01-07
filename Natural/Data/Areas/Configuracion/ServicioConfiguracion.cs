@@ -33,7 +33,7 @@ namespace Natural.Data.Areas.Configuracion
                 ServicioId = model.ServicioId,
                 PorcentajeTrabajador = model.PorcentajeTrabajador,
                 PorcentajeEmpresa = model.PorcentajeEmpresa,
-                FechaCreacion = DateTime.UtcNow,
+                //FechaCreacion = DateTime.UtcNow,
                 Estado = model.Estado
             };
 

@@ -23,7 +23,7 @@ namespace Natural.Data.Areas.Gestion
                     PersonaId = r.PersonaId,
                     ServicioId = r.ServicioId,
                     EmpresaId = r.EmpresaId,
-                    FechaServicio = DateTime.UtcNow.AddHours(-5),
+                    FechaServicio = DateTime.UtcNow,
                     Liquidado = false
                 }).OrderBy(q=>q.FechaServicio).ToList();
 
@@ -59,8 +59,13 @@ namespace Natural.Data.Areas.Gestion
 
         public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosFechaActualAsync(int empresaId)
         {
-            return await _context.RegistroServicio
-                .Where(r => r.EmpresaId == empresaId && r.FechaServicio.Value.Date == DateTime.Today)
+            var hoyUtc = DateTime.UtcNow.Date;
+            var mananaUtc = hoyUtc.AddDays(1);
+
+            var registros = await _context.RegistroServicio
+                .Where(r => r.EmpresaId == empresaId
+                            && r.FechaServicio >= hoyUtc
+                            && r.FechaServicio < mananaUtc)
                 .Include(r => r.Persona)
                 .Include(r => r.Servicio)
                 .Select(r => new RegistroServicioViewModel
@@ -74,6 +79,8 @@ namespace Natural.Data.Areas.Gestion
                     FechaServicio = r.FechaServicio
                 })
                 .ToListAsync();
+
+            return registros;
         }
 
         public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosFechaActualPersonaAsync(int empresaId, int personaId)
@@ -97,14 +104,17 @@ namespace Natural.Data.Areas.Gestion
 
         public async Task<List<ConsolidadoDiaViewModel>> ObtenerConsolidadoDiaAsync(int empresaId)
         {
-            var hoy = DateTime.Today;
+            // Obtenemos el rango del día actual en UTC
+            var hoyUtc = DateTime.UtcNow.Date;
+            var mananaUtc = hoyUtc.AddDays(1);
 
             return await _context.RegistroServicio
                 .Where(r =>
                     r.EmpresaId == empresaId &&
-                    r.FechaServicio.HasValue &&
-                    r.FechaServicio.Value.Date == hoy
+                    r.FechaServicio >= hoyUtc &&
+                    r.FechaServicio < mananaUtc
                 )
+                .Include(r => r.Persona) // necesario para concatenar el nombre
                 .GroupBy(r => new { r.PersonaId, NombrePersona = r.Persona.Nombre + " " + r.Persona.Apellido })
                 .Select(g => new ConsolidadoDiaViewModel
                 {

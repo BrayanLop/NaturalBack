@@ -14,7 +14,7 @@ namespace Natural.Data.Domain.Configuracion
 
         public decimal PorcentajeEmpresa { get; set; }
 
-        public DateTime FechaCreacion { get; set; } = DateTime.Now;
+        //public DateTime FechaCreacion { get; set; }
 
         public bool Estado { get; set; } = true;
 

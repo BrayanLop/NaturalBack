@@ -16,13 +16,15 @@ namespace Natural.Data.Areas.Contabilidad
         {
             try
             {
-                var fechaLimite = DateTime.Today.AddDays(-5);
+                // Rango UTC de los últimos 5 días
+                var fechaLimiteUtc = DateTime.UtcNow.Date.AddDays(-5);
+                var fechaHoyUtc = DateTime.UtcNow.Date.AddDays(1); // hasta mañana excluyendo
 
                 var registros = await _context.RegistroServicio
                     .Where(r =>
                         r.EmpresaId == empresaId &&
-                        r.FechaServicio.HasValue &&
-                        r.FechaServicio.Value.Date >= fechaLimite &&
+                        r.FechaServicio >= fechaLimiteUtc &&
+                        r.FechaServicio < fechaHoyUtc &&
                         !r.Liquidado)
                     .Include(r => r.Persona)
                     .ToListAsync();
@@ -68,6 +70,7 @@ namespace Natural.Data.Areas.Contabilidad
 
                         return new PagoPersonaViewModel
                         {
+                            PersonaId = grupoPersona.Key.PersonaId,
                             NombrePersona = $"{grupoPersona.Key.Nombre} {grupoPersona.Key.Apellido}",
                             TotalPagado = total,
                             Servicios = detallesServicio
@@ -85,20 +88,23 @@ namespace Natural.Data.Areas.Contabilidad
 
         public async Task<List<DetalleServicioPorDiaViewModel>> ObtenerDetalleServiciosPorPersonaAsync(int empresaId, int personaId)
         {
-            var fechaLimite = DateTime.Today.AddDays(-5);
+            // Rango UTC correcto
+            var hoyUtc = DateTime.UtcNow.Date;
+            var fechaLimiteUtc = hoyUtc.AddDays(-5);
+            var mananaUtc = hoyUtc.AddDays(1);
 
             var registros = await _context.RegistroServicio
                 .Where(r =>
                     r.EmpresaId == empresaId &&
                     r.PersonaId == personaId &&
-                    r.FechaServicio.HasValue &&
-                    r.FechaServicio.Value.Date >= fechaLimite &&
+                    r.FechaServicio >= fechaLimiteUtc &&
+                    r.FechaServicio < mananaUtc &&
                     !r.Liquidado)
                 .Include(r => r.Servicio)
-                .ToListAsync();
+                .ToListAsync(); 
 
-            var agrupadoPorFecha = registros
-                .GroupBy(r => r.FechaServicio.Value.Date)
+            return registros
+                .GroupBy(r => r.FechaServicio!.Value.Date) 
                 .Select(g => new DetalleServicioPorDiaViewModel
                 {
                     Fecha = g.Key,
@@ -106,13 +112,11 @@ namespace Natural.Data.Areas.Contabilidad
                     Servicios = g.Select(s => new ServicioDetalleItem
                     {
                         NombreServicio = s.Servicio?.Nombre ?? "Servicio desconocido",
-                        Hora = s.FechaServicio.Value
+                        Hora = s.FechaServicio!.Value
                     }).ToList()
                 })
                 .OrderByDescending(d => d.Fecha)
                 .ToList();
-
-            return agrupadoPorFecha;
         }
     }
 }
