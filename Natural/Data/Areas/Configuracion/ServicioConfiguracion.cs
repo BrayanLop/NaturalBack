@@ -123,5 +123,60 @@ namespace Natural.Data.Areas.Configuracion
         }
 
         #endregion ConfiguracionServicio
+
+        #region ConfiguracionGeneral
+
+        public async Task<ConfiguracionGeneralViewModel> CambiarPeriodicidadAsync(ConfiguracionGeneralViewModel model, string nuevaPeriodicidad)
+        {
+            if (model.EmpresaId == null)
+                throw new ArgumentException("EmpresaId es obligatorio");
+
+            var actual = await _context.ConfiguracionGeneral
+                .FirstOrDefaultAsync(c =>
+                    c.EmpresaId == model.EmpresaId &&
+                    c.Periodicidad == model.Periodicidad);
+
+            if (actual != null)
+            {
+                _context.ConfiguracionGeneral.Remove(actual);
+                await _context.SaveChangesAsync();
+            }
+
+            var nueva = new ConfiguracionGeneral
+            {
+                EmpresaId = model.EmpresaId.Value,
+                Periodicidad = nuevaPeriodicidad,
+                ValorPeriodicidad = model.ValorPeriodicidad
+            };
+
+            _context.ConfiguracionGeneral.Add(nueva);
+
+            await _context.SaveChangesAsync();
+
+            return new ConfiguracionGeneralViewModel
+            {
+                EmpresaId = nueva.EmpresaId,
+                Periodicidad = nueva.Periodicidad,
+                ValorPeriodicidad = nueva.ValorPeriodicidad
+            };
+        }
+
+        public async Task<ConfiguracionGeneralViewModel?> ObtenerConfiguracionGeneralPorEmpresaAsync(int empresaId)
+        {
+            var config = await _context.ConfiguracionGeneral
+                .FirstOrDefaultAsync(c => c.EmpresaId == empresaId);
+
+            if (config == null)
+                return null;
+
+            return new ConfiguracionGeneralViewModel
+            {
+                EmpresaId = config.EmpresaId,
+                Periodicidad = config.Periodicidad,
+                ValorPeriodicidad = config.ValorPeriodicidad
+            };
+        }
+
+        #endregion ConfiguracionGeneral
     }
 }

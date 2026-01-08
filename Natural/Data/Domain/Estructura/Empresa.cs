@@ -23,4 +23,7 @@ public partial class Empresa
 
     public virtual ICollection<Servicio> Servicios { get; set; } = new List<Servicio>();
     public virtual ICollection<ConfiguracionServicio> ConfiguracionServicios { get; set; } = new List<ConfiguracionServicio>();
+    public virtual ICollection<IngresosEmpresa> IngresosEmpresas { get; set; } = new List<IngresosEmpresa>();
+    public virtual ICollection<ConfiguracionGeneral> ConfiguracionGeneral { get; set; } = new List<ConfiguracionGeneral>();
+
 }

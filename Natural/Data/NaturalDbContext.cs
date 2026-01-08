@@ -3,6 +3,7 @@ using Natural.Data.Domain.Configuracion;
 using Natural.Data.Domain.Estructura;
 using Natural.Data.Domain.Gestion;
 using Natural.Data.Domain.Sesion;
+using Natural.Models;
 
 namespace Natural.Data.Domain;
 
@@ -17,6 +18,8 @@ public partial class NaturalDbContext : DbContext
     {
     }
 
+    public virtual DbSet<IngresosEmpresa> IngresosEmpresas { get; set; }
+    public virtual DbSet<ConfiguracionGeneral> ConfiguracionGeneral { get; set; }
     public virtual DbSet<Empresa> Empresa { get; set; }
     public virtual DbSet<Persona> Persona { get; set; }
     public virtual DbSet<PersonaRol> PersonaRol { get; set; }
@@ -37,6 +40,40 @@ public partial class NaturalDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<ConfiguracionGeneral>(entity =>
+        {
+            entity.ToTable("ConfiguracionGeneral");
+
+            entity.HasKey(e => new { e.EmpresaId, e.Periodicidad });
+
+            entity.Property(e => e.EmpresaId)
+                  .IsRequired();
+
+            entity.Property(e => e.Periodicidad)
+                  .HasColumnType("character varying")
+                  .IsRequired();
+
+            entity.Property(e => e.ValorPeriodicidad)
+                  .IsRequired();
+
+            entity.HasOne(e => e.Empresa)
+                  .WithMany(e => e.ConfiguracionGeneral)
+                  .HasForeignKey(e => e.EmpresaId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("ConfiguracionGeneral_EmpresaId_fkey");
+        });
+
+        modelBuilder.Entity<IngresosEmpresa>(entity =>
+        {
+            entity.HasKey(e => e.IngresoId).HasName("IngresosEmpresa_pkey");
+
+            entity.ToTable("IngresosEmpresa");
+
+            entity.HasOne(d => d.Empresa).WithMany(p => p.IngresosEmpresas)
+                .HasForeignKey(d => d.EmpresaId)
+                .HasConstraintName("IngresosEmpresa_EmpresaId_fkey");
+        });
+
         modelBuilder.Entity<Empresa>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK_Empresa");
