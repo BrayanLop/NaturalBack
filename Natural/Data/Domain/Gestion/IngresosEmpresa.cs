@@ -8,7 +8,7 @@ public partial class IngresosEmpresa
 
     public DateOnly FechaIngreso { get; set; }
 
-    public double? ValorIngreso { get; set; }
+    public decimal? ValorIngreso { get; set; }
 
     public int? EmpresaId { get; set; }
 

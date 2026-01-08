@@ -1,8 +1,7 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using Natural.Data.Areas.Configuracion;
 using Natural.Data.Areas.Contabilidad;
-using Natural.Data.Areas.Gestion;
-using Natural.Data.Domain.Estructura;
+using Natural.Models.Areas.Configuracion;
 
 namespace Natural.Controllers.Areas.Contabilidad
 {
@@ -39,5 +38,50 @@ namespace Natural.Controllers.Areas.Contabilidad
             return Ok(detalle);
         }
 
+        [HttpPost("LiquidarPersona")]
+        public async Task<IActionResult> LiquidarPersona([FromQuery]int personaId)
+        {
+            var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
+            if (!int.TryParse(empresaIdHeader, out int empresaId))
+                return BadRequest("Header empresaId inválido.");
+
+            try
+            {
+                await _servicioContabilidad.LiquidarServiciosAsync(empresaId, personaId);
+
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("HistorialLiquidaciones")]
+        public async Task<IActionResult> ObtenerHistorialLiquidaciones([FromQuery] DateTime fechaDesde, [FromQuery] DateTime fechaHasta, [FromQuery] int? personaId)
+        {
+            var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
+            if (!int.TryParse(empresaIdHeader, out int empresaId))
+                return BadRequest("Header empresaId inválido.");
+
+            if (fechaDesde == default || fechaHasta == default)
+                return BadRequest("Debe especificar fechaDesde y fechaHasta.");
+
+            try
+            {
+                var historial = await _servicioContabilidad.ObtenerHistorialLiquidacionesAsync(
+                    empresaId,
+                    fechaDesde,
+                    fechaHasta,
+                    personaId
+                );
+
+                return Ok(historial);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
     }
 }
