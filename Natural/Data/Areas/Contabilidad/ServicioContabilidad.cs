@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Natural.Data.Domain;
 using Natural.Data.Domain.Gestion;
+using Natural.Models.Areas.Contabilidad;
 
 namespace Natural.Data.Areas.Contabilidad
 {
@@ -365,6 +366,111 @@ namespace Natural.Data.Areas.Contabilidad
                     .ToList();
 
                 return resultado;
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        public async Task<List<HistorialIngresoViewModel>> ObtenerHistorialIngresosAsync(int empresaId, DateTime fechaDesde, DateTime fechaHasta, int? personaId = null)
+        {
+            try
+            {
+                var inicioUtc = DateTime.SpecifyKind(fechaDesde.Date, DateTimeKind.Utc);
+                var finUtc = DateTime.SpecifyKind(fechaHasta.Date.AddDays(1), DateTimeKind.Utc);
+
+                var query = _context.RegistroServicio
+                    .Where(r =>
+                        r.EmpresaId == empresaId &&
+                        r.FechaServicio != null &&
+                        r.FechaServicio >= inicioUtc &&
+                        r.FechaServicio < finUtc)
+                    .Include(r => r.Persona)
+                    .Include(r => r.Servicio)
+                    .AsQueryable();
+
+                if (personaId.HasValue)
+                {
+                    query = query.Where(r => r.PersonaId == personaId.Value);
+                }
+
+                var configuraciones = await _context.ConfiguracionServicio
+                    .Where(c => c.EmpresaId == empresaId)
+                    .ToDictionaryAsync(c => c.ServicioId, c => c);
+
+                var registros = await query
+                    .Where(r => r.Persona != null && r.Servicio != null && r.FechaServicio.HasValue)
+                    .ToListAsync();
+
+                return registros
+                    .GroupBy(r => new
+                    {
+                        r.PersonaId,
+                        r.Persona!.Nombre,
+                        r.Persona.Apellido,
+                        Fecha = r.FechaServicio!.Value.Date
+                    })
+                    .Select(g =>
+                    {
+                        decimal totalTrabajador = 0m;
+                        decimal totalEmpresa = 0m;
+
+                        foreach (var registro in g)
+                        {
+                            if (!configuraciones.TryGetValue(registro.ServicioId, out var configServicio))
+                            {
+                                continue;
+                            }
+
+                            var precio = registro.Servicio?.Precio ?? 0m;
+                            totalTrabajador += precio * (configServicio.PorcentajeTrabajador / 100m);
+                            totalEmpresa += precio * (configServicio.PorcentajeEmpresa / 100m);
+                        }
+
+                        return new HistorialIngresoViewModel
+                        {
+                            PersonaId = g.Key.PersonaId,
+                            NombrePersona = $"{g.Key.Nombre} {g.Key.Apellido}",
+                            FechaIngreso = g.Key.Fecha,
+                            TotalServicios = g.Count(),
+                            //TotalTrabajador = totalTrabajador,
+                            //TotalEmpresa = totalEmpresa
+                        };
+                    })
+                    .OrderByDescending(x => x.FechaIngreso)
+                    .ToList();
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        public async Task<List<HistorialIngresoEmpresaViewModel>> ObtenerHistorialIngresosEmpresaAsync(int empresaId, DateTime fechaDesde, DateTime fechaHasta)
+        {
+            try
+            {
+                var inicio = DateOnly.FromDateTime(fechaDesde.Date);
+                var fin = DateOnly.FromDateTime(fechaHasta.Date);
+
+                var ingresos = await _context.IngresosEmpresas
+                    .Where(i =>
+                        i.EmpresaId == empresaId &&
+                        i.FechaIngreso >= inicio &&
+                        i.FechaIngreso <= fin)
+                    .ToListAsync();
+
+                return ingresos
+                    .GroupBy(i => i.FechaIngreso)
+                    .Select(g => new HistorialIngresoEmpresaViewModel
+                    {
+                        Fecha = g.Key.ToDateTime(TimeOnly.MinValue),
+                        TotalRegistros = g.Count(),
+                        TotalIngresado = g.Sum(x => x.ValorIngreso ?? 0)
+                    })
+                    .OrderByDescending(x => x.Fecha)
+                    .ToList();
             }
             catch
             {

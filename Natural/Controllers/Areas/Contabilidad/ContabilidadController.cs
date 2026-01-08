@@ -83,5 +83,34 @@ namespace Natural.Controllers.Areas.Contabilidad
                 return BadRequest(ex.Message);
             }
         }
+
+        [HttpGet("HistorialIngresosEmpresa")]
+        public async Task<IActionResult> ObtenerHistorialIngresosEmpresa([FromQuery] DateTime fechaDesde, [FromQuery] DateTime fechaHasta)
+        {
+            var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
+            if (!int.TryParse(empresaIdHeader, out int empresaId))
+                return BadRequest("Header empresaId inválido.");
+
+            if (fechaDesde == default || fechaHasta == default)
+                return BadRequest("Debe especificar fechaDesde y fechaHasta.");
+
+            if (fechaDesde > fechaHasta)
+                return BadRequest("fechaDesde no puede ser mayor que fechaHasta.");
+
+            try
+            {
+                var historial = await _servicioContabilidad.ObtenerHistorialIngresosEmpresaAsync(
+                    empresaId,
+                    fechaDesde,
+                    fechaHasta
+                );
+
+                return Ok(historial);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
     }
 }
