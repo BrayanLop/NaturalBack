@@ -56,8 +56,8 @@ public class RegistroServicioController : ControllerBase
             return BadRequest("La fecha de inicio no puede ser mayor a la fecha de fin.");
         }
 
-        var inicio = fechaInicio?.Date ?? DateTime.UtcNow.Date;
-        var fin = fechaFin?.Date ?? DateTime.UtcNow.Date;
+        var inicio = fechaInicio ?? DateTime.UtcNow.Date;
+        var fin = fechaFin ?? DateTime.UtcNow.Date;
 
         var registros = await _servicioGestion.ObtenerRegistrosFechaActualAsync(empresaId, personaId ?? 0, inicio, fin);
 
