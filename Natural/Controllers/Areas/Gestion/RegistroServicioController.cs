@@ -39,14 +39,27 @@ public class RegistroServicioController : ControllerBase
     }
 
     [HttpGet("ObtenerRegistros")]
-    public async Task<IActionResult> ObtenerRegistros([FromQuery] int? personaId)
+    public async Task<IActionResult> ObtenerRegistros([FromQuery] int? personaId, [FromQuery] DateTime? fechaInicio, [FromQuery] DateTime? fechaFin)
     {
         if (!TryGetHeaderInt("empresaId", out var empresaId, out var errorResult))
         {
             return errorResult!;
         }
 
-        var registros = await _servicioGestion.ObtenerRegistrosFechaActualAsync(empresaId, personaId ?? 0);
+        if (fechaInicio.HasValue != fechaFin.HasValue)
+        {
+            return BadRequest("Debe proporcionar ambos valores de fecha (inicio y fin).");
+        }
+
+        if (fechaInicio.HasValue && fechaFin.HasValue && fechaInicio > fechaFin)
+        {
+            return BadRequest("La fecha de inicio no puede ser mayor a la fecha de fin.");
+        }
+
+        var inicio = fechaInicio?.Date ?? DateTime.UtcNow.Date;
+        var fin = fechaFin?.Date ?? DateTime.UtcNow.Date;
+
+        var registros = await _servicioGestion.ObtenerRegistrosFechaActualAsync(empresaId, personaId ?? 0, inicio, fin);
 
         return Ok(registros);
     }

@@ -35,12 +35,8 @@ namespace Natural.Controllers.Areas.Sesion
             if (usuario is null)
                 return Unauthorized("Usuario no encontrado");
 
-            var personaTask = _servicioEstructura.ObtenerPersonaPorIdAsync(usuario.PersonaId);
-            var rolTask = _servicioEstructura.ObtenerRol(usuario.PersonaId);
-
-            await Task.WhenAll(personaTask, rolTask);
-
-            var persona = personaTask.Result;
+            var persona = await _servicioEstructura.ObtenerPersonaPorIdAsync(usuario.PersonaId);
+            var rol = await _servicioEstructura.ObtenerRol(usuario.PersonaId);
 
             if (persona is null)
                 return NotFound("No se encontró la persona asociada");
@@ -50,7 +46,7 @@ namespace Natural.Controllers.Areas.Sesion
                 id = persona.Id,
                 nombre = persona.Nombre,
                 empresaId = persona.EmpresaId,
-                rol = rolTask.Result
+                rol = rol
             };
 
             return Ok(response);

@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Natural.Common;
 using Natural.Data.Domain;
 using Natural.Data.Domain.Configuracion;
 using Natural.Data.Domain.Estructura;
@@ -138,7 +139,7 @@ namespace Natural.Data.Areas.Contabilidad
                 }
 
                 return registros
-                    .GroupBy(r => r.FechaServicio!.Value.Date)
+                    .GroupBy(r => TimeZoneHelper.ConvertUtcToColombia(r.FechaServicio!.Value).Date)
                     .Select(g =>
                     {
                         var totalMontoDia = g
@@ -150,13 +151,17 @@ namespace Natural.Data.Areas.Contabilidad
                             Fecha = g.Key,
                             LiquidacionServicios = totalMontoDia,
                             TotalServicios = g.Count(),
-                            Servicios = g.Select(s => new ServicioDetalleItem
+                            Servicios = g.Select(s =>
                             {
-                                RegistroServicioId = s.Id,
-                                NombreServicio = s.Servicio?.Nombre ?? "Servicio desconocido",
-                                Hora = s.FechaServicio!.Value,
-                                Confirmado = s.Confirmado,
-                                ValorTrabajador = CalcularPagoRegistro(s)
+                                var horaColombia = TimeZoneHelper.ConvertUtcToColombia(s.FechaServicio!.Value);
+                                return new ServicioDetalleItem
+                                {
+                                    RegistroServicioId = s.Id,
+                                    NombreServicio = s.Servicio?.Nombre ?? "Servicio desconocido",
+                                    Hora = horaColombia,
+                                    Confirmado = s.Confirmado,
+                                    ValorTrabajador = CalcularPagoRegistro(s)
+                                };
                             }).ToList()
                         };
                     })
@@ -217,7 +222,7 @@ namespace Natural.Data.Areas.Contabilidad
                         ingresos.Add(new IngresosEmpresa
                         {
                             EmpresaId = empresaId,
-                            FechaIngreso = DateOnly.FromDateTime(DateTime.UtcNow),
+                            FechaIngreso = DateOnly.FromDateTime(TimeZoneHelper.ConvertUtcToColombia(DateTime.UtcNow)),
                             ValorIngreso = valorIngreso
                         });
                     }
@@ -267,12 +272,16 @@ namespace Natural.Data.Areas.Contabilidad
                     .ToListAsync();
 
                 return registros
-                    .GroupBy(r => new
+                    .GroupBy(r =>
                     {
-                        r.PersonaId,
-                        Nombre = r.Persona!.Nombre,
-                        Apellido = r.Persona.Apellido,
-                        Fecha = r.FechaServicio!.Value.Date
+                        var fechaColombia = TimeZoneHelper.ConvertUtcToColombia(r.FechaServicio!.Value).Date;
+                        return new
+                        {
+                            r.PersonaId,
+                            Nombre = r.Persona!.Nombre,
+                            Apellido = r.Persona.Apellido,
+                            Fecha = fechaColombia
+                        };
                     })
                     .Select(g =>
                     {
@@ -332,12 +341,16 @@ namespace Natural.Data.Areas.Contabilidad
                     .ToListAsync();
 
                 return registros
-                    .GroupBy(r => new
+                    .GroupBy(r =>
                     {
-                        r.PersonaId,
-                        r.Persona!.Nombre,
-                        r.Persona.Apellido,
-                        Fecha = r.FechaServicio!.Value.Date
+                        var fechaColombia = TimeZoneHelper.ConvertUtcToColombia(r.FechaServicio!.Value).Date;
+                        return new
+                        {
+                            r.PersonaId,
+                            r.Persona!.Nombre,
+                            r.Persona.Apellido,
+                            Fecha = fechaColombia
+                        };
                     })
                     .Select(g =>
                     {
@@ -388,11 +401,15 @@ namespace Natural.Data.Areas.Contabilidad
 
                 return ingresos
                     .GroupBy(i => i.FechaIngreso)
-                    .Select(g => new HistorialIngresoEmpresaViewModel
+                    .Select(g =>
                     {
-                        Fecha = g.Key.ToDateTime(TimeOnly.MinValue),
-                        TotalRegistros = g.Count(),
-                        TotalIngresado = g.Sum(x => x.ValorIngreso ?? 0)
+                        var fechaLocal = DateTime.SpecifyKind(g.Key.ToDateTime(TimeOnly.MinValue), DateTimeKind.Unspecified);
+                        return new HistorialIngresoEmpresaViewModel
+                        {
+                            Fecha = fechaLocal,
+                            TotalRegistros = g.Count(),
+                            TotalIngresado = g.Sum(x => x.ValorIngreso ?? 0)
+                        };
                     })
                     .OrderByDescending(x => x.Fecha)
                     .ToList();
@@ -413,27 +430,26 @@ namespace Natural.Data.Areas.Contabilidad
 
         private static DateTime CalcularFechaLimiteUtc(ConfiguracionGeneral configGeneral)
         {
-            var fechaBase = DateTime.UtcNow.Date;
+            var fechaBaseColombia = TimeZoneHelper.ColombiaNow.Date;
             var periodicidad = configGeneral.Periodicidad?.ToUpperInvariant();
 
-            return periodicidad switch
+            var fechaLimiteColombia = periodicidad switch
             {
-                "M" => fechaBase.AddMonths(-configGeneral.ValorPeriodicidad),
-                "Q" => fechaBase.AddDays(-15),
-                "S" => fechaBase.AddDays(-7),
-                "D" => fechaBase.AddDays(-configGeneral.ValorPeriodicidad),
-                _ => fechaBase.AddDays(-5)
+                "M" => fechaBaseColombia.AddMonths(-configGeneral.ValorPeriodicidad),
+                "Q" => fechaBaseColombia.AddDays(-15),
+                "S" => fechaBaseColombia.AddDays(-7),
+                "D" => fechaBaseColombia.AddDays(-configGeneral.ValorPeriodicidad),
+                _ => fechaBaseColombia.AddDays(-5)
             };
+
+            return TimeZoneHelper.ConvertColombiaToUtc(fechaLimiteColombia);
         }
 
-        private static DateTime CalcularFechaFinUtc() => DateTime.UtcNow.Date.AddDays(1);
+        private static DateTime CalcularFechaFinUtc() =>
+            TimeZoneHelper.RangoDiaActualUtc().FinUtc;
 
-        private static (DateTime InicioUtc, DateTime FinUtc) ConstruirRangoUtc(DateTime fechaDesde, DateTime fechaHasta)
-        {
-            var inicio = DateTime.SpecifyKind(fechaDesde.Date, DateTimeKind.Utc);
-            var fin = DateTime.SpecifyKind(fechaHasta.Date.AddDays(1), DateTimeKind.Utc);
-            return (inicio, fin);
-        }
+        private static (DateTime InicioUtc, DateTime FinUtc) ConstruirRangoUtc(DateTime fechaDesde, DateTime fechaHasta) =>
+            TimeZoneHelper.RangoUtc(fechaDesde, fechaHasta);
 
         private static Dictionary<int, ConfiguracionServicio> CrearDiccionarioConfiguraciones(IEnumerable<ConfiguracionServicio> configuraciones) =>
             configuraciones

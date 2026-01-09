@@ -63,10 +63,10 @@ namespace Natural.Data.Areas.Gestion
                 .ToListAsync();
         }
 
-        public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosFechaActualAsync(int empresaId, int personaId)
+        public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosFechaActualAsync(int empresaId, int personaId, DateTime fechaInicio, DateTime fechaFin)
         {
-            var (inicioDia, finDia) = ObtenerRangoUtcActual();
-            var query = ConstruirQueryPorRango(empresaId, inicioDia, finDia);
+            var (inicioRango, finRango) = NormalizarRangoUtc(fechaInicio, fechaFin);
+            var query = ConstruirQueryPorRango(empresaId, inicioRango, finRango);
 
             var esAdministrador = await PersonaEsAdministradorAsync(personaId);
             if (!esAdministrador)
@@ -94,6 +94,24 @@ namespace Natural.Data.Areas.Gestion
                     Confirmado = r.Confirmado
                 })
                 .ToListAsync();
+        }
+
+        private static (DateTime Inicio, DateTime Fin) NormalizarRangoUtc(DateTime fechaInicio, DateTime fechaFin)
+        {
+            var inicioUtc = fechaInicio.Kind == DateTimeKind.Utc ? fechaInicio : fechaInicio.ToUniversalTime();
+            var finUtc = fechaFin.Kind == DateTimeKind.Utc ? fechaFin : fechaFin.ToUniversalTime();
+
+            if (finUtc < inicioUtc)
+            {
+                (inicioUtc, finUtc) = (finUtc, inicioUtc);
+            }
+
+            if (finUtc == inicioUtc)
+            {
+                finUtc = finUtc.AddDays(1);
+            }
+
+            return (inicioUtc, finUtc);
         }
 
         public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosFechaActualPersonaAsync(int empresaId, int personaId)
