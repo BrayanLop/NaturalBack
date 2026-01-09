@@ -2,12 +2,25 @@
 using Microsoft.EntityFrameworkCore;
 using Natural.Data.Domain.Configuracion;
 using Natural.Models.Areas.Configuracion;
+using System.Linq.Expressions;
 
 namespace Natural.Data.Areas.Configuracion
 {
     public class ServicioConfiguracion
     {
         private readonly NaturalDbContext _context;
+
+        private static readonly Expression<Func<ConfiguracionServicio, ConfiguracionServicioViewModel>> ConfiguracionServicioSelector =
+            c => new ConfiguracionServicioViewModel
+            {
+                Id = c.Id,
+                EmpresaId = c.EmpresaId,
+                ServicioId = c.ServicioId,
+                PorcentajeTrabajador = c.PorcentajeTrabajador,
+                PorcentajeEmpresa = c.PorcentajeEmpresa,
+                Estado = c.Estado,
+                NombreServicio = c.Servicio.Nombre
+            };
 
         public ServicioConfiguracion(NaturalDbContext context)
         {
@@ -18,8 +31,7 @@ namespace Natural.Data.Areas.Configuracion
 
         public async Task<ConfiguracionServicioViewModel> CrearConfiguracionServicioAsync(ConfiguracionServicioViewModel model)
         {
-            if (model.PorcentajeTrabajador + model.PorcentajeEmpresa > 100)
-                throw new ArgumentException("La suma de los porcentajes no puede superar el 100%");
+            ValidarPorcentajes(model.PorcentajeTrabajador, model.PorcentajeEmpresa);
 
             var yaExiste = await _context.ConfiguracionServicio
                 .AnyAsync(c => c.EmpresaId == model.EmpresaId && c.ServicioId == model.ServicioId);
@@ -33,25 +45,14 @@ namespace Natural.Data.Areas.Configuracion
                 ServicioId = model.ServicioId,
                 PorcentajeTrabajador = model.PorcentajeTrabajador,
                 PorcentajeEmpresa = model.PorcentajeEmpresa,
-                //FechaCreacion = DateTime.UtcNow,
                 Estado = model.Estado
             };
 
             _context.ConfiguracionServicio.Add(config);
             await _context.SaveChangesAsync();
+            await _context.Entry(config).Reference(c => c.Servicio).LoadAsync();
 
-            // Obtener info completa para retornar
-            var servicio = await _context.Servicio.FindAsync(model.ServicioId);
-
-            return new ConfiguracionServicioViewModel
-            {
-                Id = config.Id,
-                EmpresaId = config.EmpresaId,
-                ServicioId = config.ServicioId,
-                PorcentajeTrabajador = config.PorcentajeTrabajador,
-                PorcentajeEmpresa = config.PorcentajeEmpresa,
-                Estado = config.Estado,
-            };
+            return MapearConfiguracionServicio(config, config.Servicio?.Nombre);
         }
 
         public async Task<bool> ActualizarConfiguracionServicioAsync(ConfiguracionServicioViewModel model)
@@ -61,8 +62,7 @@ namespace Natural.Data.Areas.Configuracion
             if (config == null)
                 return false;
 
-            if (model.PorcentajeTrabajador + model.PorcentajeEmpresa > 100)
-                throw new ArgumentException("La suma de los porcentajes no puede superar el 100%");
+            ValidarPorcentajes(model.PorcentajeTrabajador, model.PorcentajeEmpresa);
 
             config.PorcentajeTrabajador = model.PorcentajeTrabajador;
             config.PorcentajeEmpresa = model.PorcentajeEmpresa;
@@ -78,18 +78,8 @@ namespace Natural.Data.Areas.Configuracion
         public async Task<ConfiguracionServicioViewModel?> ObtenerConfiguracionPorIdAsync(int id)
         {
             return await _context.ConfiguracionServicio
-                .Include(c => c.Servicio)
                 .Where(c => c.Id == id)
-                .Select(c => new ConfiguracionServicioViewModel
-                {
-                    Id = c.Id,
-                    EmpresaId = c.EmpresaId,
-                    ServicioId = c.ServicioId,
-                    PorcentajeTrabajador = c.PorcentajeTrabajador,
-                    PorcentajeEmpresa = c.PorcentajeEmpresa,
-                    Estado = c.Estado,
-                    NombreServicio = c.Servicio.Nombre
-                })
+                .Select(ConfiguracionServicioSelector)
                 .FirstOrDefaultAsync();
         }
 
@@ -97,17 +87,7 @@ namespace Natural.Data.Areas.Configuracion
         {
             return await _context.ConfiguracionServicio
                 .Where(c => c.EmpresaId == empresaId)
-                .Include(c => c.Servicio)
-                .Select(c => new ConfiguracionServicioViewModel
-                {
-                    Id = c.Id,
-                    EmpresaId = c.EmpresaId,
-                    ServicioId = c.ServicioId,
-                    PorcentajeTrabajador = c.PorcentajeTrabajador,
-                    PorcentajeEmpresa = c.PorcentajeEmpresa,
-                    Estado = c.Estado,
-                    NombreServicio = c.Servicio.Nombre
-                })
+                .Select(ConfiguracionServicioSelector)
                 .ToListAsync();
         }
 
@@ -178,5 +158,29 @@ namespace Natural.Data.Areas.Configuracion
         }
 
         #endregion ConfiguracionGeneral
+
+        #region Helpers
+
+        private static void ValidarPorcentajes(decimal porcentajeTrabajador, decimal porcentajeEmpresa)
+        {
+            if (porcentajeTrabajador + porcentajeEmpresa > 100)
+                throw new ArgumentException("La suma de los porcentajes no puede superar el 100%");
+        }
+
+        private static ConfiguracionServicioViewModel MapearConfiguracionServicio(ConfiguracionServicio config, string? nombreServicio)
+        {
+            return new ConfiguracionServicioViewModel
+            {
+                Id = config.Id,
+                EmpresaId = config.EmpresaId,
+                ServicioId = config.ServicioId,
+                PorcentajeTrabajador = config.PorcentajeTrabajador,
+                PorcentajeEmpresa = config.PorcentajeEmpresa,
+                Estado = config.Estado,
+                NombreServicio = nombreServicio
+            };
+        }
+
+        #endregion Helpers
     }
 }

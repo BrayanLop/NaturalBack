@@ -16,10 +16,10 @@ public class PersonaController : ControllerBase
     [HttpPost("Crear")]
     public async Task<IActionResult> CrearPersona([FromBody] PersonaViewModel persona)
     {
-        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-
-        if (!int.TryParse(empresaIdHeader, out int empresaId))
-            return BadRequest("Header 'empresaId' inválido.");
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+        {
+            return errorResult!;
+        }
 
         persona.EmpresaId = empresaId;
 
@@ -30,10 +30,10 @@ public class PersonaController : ControllerBase
     [HttpGet("Obtener")]
     public async Task<IActionResult> ObtenerTodasLasPersonas()
     {
-        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-
-        if (!int.TryParse(empresaIdHeader, out int empresaId))
-            return BadRequest("Header 'empresaId' inválido.");
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+        {
+            return errorResult!;
+        }
 
         var personas = await _servicioEstructura.ObtenerTodasLasPersonasAsync(empresaId);
         return Ok(personas);
@@ -54,7 +54,7 @@ public class PersonaController : ControllerBase
             return NotFound();
         }
 
-        persona.Rol = rol;  
+        persona.Rol = rol;
 
         return Ok(persona);
     }
@@ -62,15 +62,15 @@ public class PersonaController : ControllerBase
     [HttpPut("Actualizar/{id}")]
     public async Task<IActionResult> ActualizarPersona(int id, [FromBody] PersonaViewModel persona)
     {
-        if (id == 0 && id != persona.Id)
+        if (id <= 0)
         {
             return BadRequest();
         }
 
-        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-
-        if (!int.TryParse(empresaIdHeader, out int empresaId))
-            return BadRequest("Header 'empresaId' inválido.");
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+        {
+            return errorResult!;
+        }
 
         persona.EmpresaId = empresaId;
         persona.Id = id;
@@ -94,5 +94,20 @@ public class PersonaController : ControllerBase
         }
 
         return NoContent();
+    }
+
+    private bool TryObtenerEmpresaId(out int empresaId, out IActionResult? errorResult)
+    {
+        empresaId = 0;
+        errorResult = null;
+
+        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
+        if (!int.TryParse(empresaIdHeader, out empresaId))
+        {
+            errorResult = BadRequest("Header 'empresaId' inválido.");
+            return false;
+        }
+
+        return true;
     }
 }

@@ -16,9 +16,8 @@ public class ConfiguracionServicioController : ControllerBase
     [HttpPost("Crear")]
     public async Task<IActionResult> Crear([FromBody] ConfiguracionServicioViewModel configuracion)
     {
-        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-        if (!int.TryParse(empresaIdHeader, out int empresaId))
-            return BadRequest("Header 'empresaId' inválido.");
+        if (!TryGetEmpresaId(out var empresaId, out var errorResult))
+            return errorResult!;
 
         configuracion.EmpresaId = empresaId;
 
@@ -36,9 +35,8 @@ public class ConfiguracionServicioController : ControllerBase
     [HttpGet("Obtener")]
     public async Task<IActionResult> ObtenerTodos()
     {
-        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-        if (!int.TryParse(empresaIdHeader, out int empresaId))
-            return BadRequest("Header 'empresaId' inválido.");
+        if (!TryGetEmpresaId(out var empresaId, out var errorResult))
+            return errorResult!;
 
         var configuraciones = await _servicioConfiguracion.ObtenerConfiguracionesPorEmpresaAsync(empresaId);
         return Ok(configuraciones);
@@ -60,9 +58,8 @@ public class ConfiguracionServicioController : ControllerBase
         if (id != configuracion.Id)
             return BadRequest("Id de configuración no coincide.");
 
-        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-        if (!int.TryParse(empresaIdHeader, out int empresaId))
-            return BadRequest("Header 'empresaId' inválido.");
+        if (!TryGetEmpresaId(out var empresaId, out var errorResult))
+            return errorResult!;
 
         configuracion.EmpresaId = empresaId;
 
@@ -88,5 +85,18 @@ public class ConfiguracionServicioController : ControllerBase
             return NotFound();
 
         return NoContent();
+    }
+
+    private bool TryGetEmpresaId(out int empresaId, out IActionResult? errorResult)
+    {
+        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
+        if (!int.TryParse(empresaIdHeader, out empresaId))
+        {
+            errorResult = BadRequest("Header 'empresaId' inválido.");
+            return false;
+        }
+
+        errorResult = null;
+        return true;
     }
 }

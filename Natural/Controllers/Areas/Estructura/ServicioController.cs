@@ -17,10 +17,10 @@ public class ServicioController : ControllerBase
     [HttpPost("Crear")]
     public async Task<IActionResult> CrearServicio([FromBody] ServicioViewModel servicio)
     {
-        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-
-        if (!int.TryParse(empresaIdHeader, out int empresaId))
-            return BadRequest("Header 'empresaId' inválido.");
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+        {
+            return errorResult;
+        }
 
         servicio.EmpresaId = empresaId;
 
@@ -31,10 +31,10 @@ public class ServicioController : ControllerBase
     [HttpGet("Obtener")]
     public async Task<IActionResult> ObtenerTodosLosServicios()
     {
-        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-
-        if (!int.TryParse(empresaIdHeader, out int empresaId))
-            return BadRequest("Header 'empresaId' inválido.");
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+        {
+            return errorResult;
+        }
 
         var servicios = await _servicioEstructura.ObtenerTodosLosServicioAsync(empresaId);
         return Ok(servicios);
@@ -60,10 +60,10 @@ public class ServicioController : ControllerBase
             return BadRequest();
         }
 
-        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-
-        if (!int.TryParse(empresaIdHeader, out int empresaId))
-            return BadRequest("Header 'empresaId' inválido.");
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+        {
+            return errorResult;
+        }
 
         servicio.EmpresaId = empresaId;
 
@@ -86,5 +86,18 @@ public class ServicioController : ControllerBase
         }
 
         return NoContent();
+    }
+
+    private bool TryObtenerEmpresaId(out int empresaId, out IActionResult? errorResult)
+    {
+        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
+        if (int.TryParse(empresaIdHeader, out empresaId))
+        {
+            errorResult = null;
+            return true;
+        }
+
+        errorResult = BadRequest("Header 'empresaId' inválido.");
+        return false;
     }
 }

@@ -21,10 +21,10 @@ public class RegistroServicioController : ControllerBase
             return BadRequest("Debe enviar al menos un registro.");
         }
 
-        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-
-        if (!int.TryParse(empresaIdHeader, out int empresaId))
-            return BadRequest("Header 'empresaId' inválido.");
+        if (!TryGetHeaderInt("empresaId", out var empresaId, out var errorResult))
+        {
+            return errorResult!;
+        }
 
         registros.ForEach(item => item.EmpresaId = empresaId);
 
@@ -41,10 +41,10 @@ public class RegistroServicioController : ControllerBase
     [HttpGet("ObtenerRegistros")]
     public async Task<IActionResult> ObtenerRegistros([FromQuery] int? personaId)
     {
-        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-
-        if (!int.TryParse(empresaIdHeader, out int empresaId))
-            return BadRequest("Header 'empresaId' inválido.");
+        if (!TryGetHeaderInt("empresaId", out var empresaId, out var errorResult))
+        {
+            return errorResult!;
+        }
 
         var registros = await _servicioGestion.ObtenerRegistrosFechaActualAsync(empresaId, personaId ?? 0);
 
@@ -54,14 +54,15 @@ public class RegistroServicioController : ControllerBase
     [HttpGet("ObtenerRegistrosPersona")]
     public async Task<IActionResult> ObtenerRegistrosPersona()
     {
-        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-        var personaIdHeader = Request.Headers["personaId"].FirstOrDefault();
+        if (!TryGetHeaderInt("empresaId", out var empresaId, out var errorResult))
+        {
+            return errorResult!;
+        }
 
-        if (!int.TryParse(empresaIdHeader, out int empresaId))
-            return BadRequest("Header 'empresaId' inválido.");
-
-        if (!int.TryParse(personaIdHeader, out int personaId))
-            return BadRequest("Header 'personaId' inválido.");
+        if (!TryGetHeaderInt("personaId", out var personaId, out var personaError))
+        {
+            return personaError!;
+        }
 
         var registros = await _servicioGestion.ObtenerRegistrosFechaActualPersonaAsync(empresaId, personaId);
 
@@ -76,10 +77,10 @@ public class RegistroServicioController : ControllerBase
     [HttpGet("ObtenerConsolidadoDia")]
     public async Task<IActionResult> ObtenerConsolidadoDia([FromQuery] int? personaId)
     {
-        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-
-        if (!int.TryParse(empresaIdHeader, out int empresaId))
-            return BadRequest("Header 'empresaId' inválido.");
+        if (!TryGetHeaderInt("empresaId", out var empresaId, out var errorResult))
+        {
+            return errorResult!;
+        }
 
         var consolidado = await _servicioGestion.ObtenerConsolidadoDiaAsync(empresaId, personaId ?? 0);
 
@@ -94,9 +95,10 @@ public class RegistroServicioController : ControllerBase
             if (!confirmado.HasValue)
                 return BadRequest("Debe proporcionar el estado de confirmación.");
 
-            var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-            if (!int.TryParse(empresaIdHeader, out int empresaId))
-                return BadRequest("Header 'empresaId' inválido.");
+            if (!TryGetHeaderInt("empresaId", out var empresaId, out var errorResult))
+            {
+                return errorResult!;
+            }
 
             var actualizado = await _servicioGestion.ActualizarConfirmadoAsync(registroServicioId, empresaId, confirmado.Value);
             if (!actualizado)
@@ -104,11 +106,24 @@ public class RegistroServicioController : ControllerBase
 
             return Ok("Estado de confirmación actualizado correctamente.");
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return Problem(
                 detail: "Ocurrió un error inesperado al actualizar el registro.",
                 statusCode: StatusCodes.Status500InternalServerError);
         }
+    }
+
+    private bool TryGetHeaderInt(string headerName, out int value, out IActionResult? errorResult)
+    {
+        var headerValue = Request.Headers[headerName].FirstOrDefault();
+        if (!int.TryParse(headerValue, out value))
+        {
+            errorResult = BadRequest($"Header '{headerName}' inválido.");
+            return false;
+        }
+
+        errorResult = null;
+        return true;
     }
 }

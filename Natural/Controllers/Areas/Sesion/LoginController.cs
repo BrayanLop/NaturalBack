@@ -21,24 +21,36 @@ namespace Natural.Controllers.Areas.Sesion
         [HttpPost("Autenticar")]
         public async Task<IActionResult> Autenticar([FromBody] LoginRequest request)
         {
-            if (string.IsNullOrEmpty(request.Email))
+            if (request is null)
+                return BadRequest("Debe enviar las credenciales");
+
+            if (string.IsNullOrWhiteSpace(request.Email))
                 return BadRequest("Debe enviar la cédula");
+
+            if (string.IsNullOrWhiteSpace(request.Password))
+                return BadRequest("Debe enviar la contraseña");
 
             var usuario = await _servicioLogin.ObtenerUsuarioAsync(request.Email, request.Password);
 
-            if (usuario == null)
+            if (usuario is null)
                 return Unauthorized("Usuario no encontrado");
 
-            var persona = await _servicioEstructura.ObtenerPersonaPorIdAsync(usuario.PersonaId);
-            var rol = await _servicioEstructura.ObtenerRol(usuario.PersonaId);
+            var personaTask = _servicioEstructura.ObtenerPersonaPorIdAsync(usuario.PersonaId);
+            var rolTask = _servicioEstructura.ObtenerRol(usuario.PersonaId);
 
-            // Solo devolver lo necesario
+            await Task.WhenAll(personaTask, rolTask);
+
+            var persona = personaTask.Result;
+
+            if (persona is null)
+                return NotFound("No se encontró la persona asociada");
+
             var response = new
             {
                 id = persona.Id,
                 nombre = persona.Nombre,
                 empresaId = persona.EmpresaId,
-                rol = rol
+                rol = rolTask.Result
             };
 
             return Ok(response);

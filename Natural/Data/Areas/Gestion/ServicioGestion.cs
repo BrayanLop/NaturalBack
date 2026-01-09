@@ -18,15 +18,20 @@ namespace Natural.Data.Areas.Gestion
         {
             try
             {
-                var registrosEntidad = registros.Select(r => new RegistroServicio
-                {
-                    PersonaId = r.PersonaId,
-                    ServicioId = r.ServicioId,
-                    EmpresaId = r.EmpresaId,
-                    FechaServicio = DateTime.UtcNow,
-                    Liquidado = false,
-                    Confirmado = r.Confirmado
-                }).OrderBy(q => q.FechaServicio).ToList();
+                var fechaActual = DateTime.UtcNow;
+
+                var registrosEntidad = registros
+                    .Select(r => new RegistroServicio
+                    {
+                        PersonaId = r.PersonaId,
+                        ServicioId = r.ServicioId,
+                        EmpresaId = r.EmpresaId,
+                        FechaServicio = r.FechaServicio ?? fechaActual,
+                        Liquidado = false,
+                        Confirmado = r.Confirmado
+                    })
+                    .OrderBy(r => r.FechaServicio)
+                    .ToList();
 
                 await _context.RegistroServicio.AddRangeAsync(registrosEntidad);
                 await _context.SaveChangesAsync();
@@ -60,22 +65,11 @@ namespace Natural.Data.Areas.Gestion
 
         public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosFechaActualAsync(int empresaId, int personaId)
         {
-            var hoyUtc = DateTime.UtcNow.Date;
-            var mananaUtc = hoyUtc.AddDays(1);
+            var (inicioDia, finDia) = ObtenerRangoUtcActual();
+            var query = ConstruirQueryPorRango(empresaId, inicioDia, finDia);
 
-            var personaRol = await _context.PersonaRol
-                .Where(pr => pr.PersonaId == personaId)
-                .Select(pr => pr.RolCodigo)
-                .FirstOrDefaultAsync();
-
-            IQueryable<RegistroServicio> query = _context.RegistroServicio
-                .Where(r =>
-                    r.EmpresaId == empresaId &&
-                    r.FechaServicio >= hoyUtc &&
-                    r.FechaServicio < mananaUtc
-                );
-
-            if (personaRol != "01")
+            var esAdministrador = await PersonaEsAdministradorAsync(personaId);
+            if (!esAdministrador)
             {
                 query = query.Where(r => r.PersonaId == personaId);
             }
@@ -104,8 +98,10 @@ namespace Natural.Data.Areas.Gestion
 
         public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosFechaActualPersonaAsync(int empresaId, int personaId)
         {
-            return await _context.RegistroServicio
-                .Where(r => r.EmpresaId == empresaId && r.FechaServicio.Value.Date == DateTime.Today && r.PersonaId == personaId)
+            var (inicioDia, finDia) = ObtenerRangoUtcActual();
+
+            return await ConstruirQueryPorRango(empresaId, inicioDia, finDia)
+                .Where(r => r.PersonaId == personaId)
                 .Include(r => r.Persona)
                 .Include(r => r.Servicio)
                 .Select(r => new RegistroServicioViewModel
@@ -124,22 +120,11 @@ namespace Natural.Data.Areas.Gestion
 
         public async Task<List<ConsolidadoDiaViewModel>> ObtenerConsolidadoDiaAsync(int empresaId, int personaId)
         {
-            var hoyUtc = DateTime.UtcNow.Date;
-            var mananaUtc = hoyUtc.AddDays(1);
+            var (inicioDia, finDia) = ObtenerRangoUtcActual();
+            var query = ConstruirQueryPorRango(empresaId, inicioDia, finDia);
 
-            var personaRol = await _context.PersonaRol
-                .Where(pr => pr.PersonaId == personaId)
-                .Select(pr => pr.RolCodigo)
-                .FirstOrDefaultAsync();
-
-            IQueryable<RegistroServicio> query = _context.RegistroServicio
-                .Where(r =>
-                    r.EmpresaId == empresaId &&
-                    r.FechaServicio >= hoyUtc &&
-                    r.FechaServicio < mananaUtc
-                );
-
-            if (personaRol != "01")
+            var esAdministrador = await PersonaEsAdministradorAsync(personaId);
+            if (!esAdministrador)
             {
                 query = query.Where(r => r.PersonaId == personaId);
             }
@@ -179,6 +164,32 @@ namespace Natural.Data.Areas.Gestion
             await _context.SaveChangesAsync();
 
             return true;
+        }
+
+        private static (DateTime InicioDia, DateTime FinDia) ObtenerRangoUtcActual()
+        {
+            var inicioDia = DateTime.UtcNow.Date;
+            return (inicioDia, inicioDia.AddDays(1));
+        }
+
+        private IQueryable<RegistroServicio> ConstruirQueryPorRango(int empresaId, DateTime inicio, DateTime fin)
+        {
+            return _context.RegistroServicio
+                .Where(r =>
+                    r.EmpresaId == empresaId &&
+                    r.FechaServicio.HasValue &&
+                    r.FechaServicio.Value >= inicio &&
+                    r.FechaServicio.Value < fin);
+        }
+
+        private async Task<bool> PersonaEsAdministradorAsync(int personaId)
+        {
+            var rol = await _context.PersonaRol
+                .Where(pr => pr.PersonaId == personaId)
+                .Select(pr => pr.RolCodigo)
+                .FirstOrDefaultAsync();
+
+            return rol == "01";
         }
     }
 }

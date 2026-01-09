@@ -17,9 +17,8 @@ namespace Natural.Controllers.Areas.Contabilidad
         [HttpGet("PagosUltimosDias")]
         public async Task<IActionResult> PagosUltimosDias()
         {
-            var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-            if (!int.TryParse(empresaIdHeader, out int empresaId))
-                return BadRequest("Header 'empresaId' inválido.");
+            if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+                return errorResult!;
 
             var pagos = await _servicioContabilidad.ObtenerPagosAgrupadosUltimosDiasAsync(empresaId);
             return Ok(pagos);
@@ -28,25 +27,22 @@ namespace Natural.Controllers.Areas.Contabilidad
         [HttpGet("DetalleServiciosPorPersona/{personaId}")]
         public async Task<IActionResult> ObtenerDetallePorPersona(int personaId)
         {
-            var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-            if (!int.TryParse(empresaIdHeader, out int empresaId))
-                return BadRequest("Header empresaId inválido.");
+            if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+                return errorResult!;
 
             var detalle = await _servicioContabilidad.ObtenerDetalleServiciosPorPersonaAsync(empresaId, personaId);
             return Ok(detalle);
         }
 
         [HttpPost("LiquidarPersona")]
-        public async Task<IActionResult> LiquidarPersona([FromQuery]int personaId)
+        public async Task<IActionResult> LiquidarPersona([FromQuery] int personaId)
         {
-            var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-            if (!int.TryParse(empresaIdHeader, out int empresaId))
-                return BadRequest("Header empresaId inválido.");
+            if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+                return errorResult!;
 
             try
             {
                 await _servicioContabilidad.LiquidarServiciosAsync(empresaId, personaId);
-
                 return Ok();
             }
             catch (Exception ex)
@@ -56,14 +52,16 @@ namespace Natural.Controllers.Areas.Contabilidad
         }
 
         [HttpGet("HistorialLiquidaciones")]
-        public async Task<IActionResult> ObtenerHistorialLiquidaciones([FromQuery] DateTime fechaDesde, [FromQuery] DateTime fechaHasta, [FromQuery] int? personaId)
+        public async Task<IActionResult> ObtenerHistorialLiquidaciones(
+            [FromQuery] DateTime fechaDesde,
+            [FromQuery] DateTime fechaHasta,
+            [FromQuery] int? personaId)
         {
-            var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-            if (!int.TryParse(empresaIdHeader, out int empresaId))
-                return BadRequest("Header empresaId inválido.");
+            if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+                return errorResult!;
 
-            if (fechaDesde == default || fechaHasta == default)
-                return BadRequest("Debe especificar fechaDesde y fechaHasta.");
+            if (!TryValidarFechas(fechaDesde, fechaHasta, validarOrdenCronologico: false, out var errorFechas))
+                return errorFechas!;
 
             try
             {
@@ -71,8 +69,7 @@ namespace Natural.Controllers.Areas.Contabilidad
                     empresaId,
                     fechaDesde,
                     fechaHasta,
-                    personaId
-                );
+                    personaId);
 
                 return Ok(historial);
             }
@@ -83,25 +80,22 @@ namespace Natural.Controllers.Areas.Contabilidad
         }
 
         [HttpGet("HistorialIngresosEmpresa")]
-        public async Task<IActionResult> ObtenerHistorialIngresosEmpresa([FromQuery] DateTime fechaDesde, [FromQuery] DateTime fechaHasta)
+        public async Task<IActionResult> ObtenerHistorialIngresosEmpresa(
+            [FromQuery] DateTime fechaDesde,
+            [FromQuery] DateTime fechaHasta)
         {
-            var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-            if (!int.TryParse(empresaIdHeader, out int empresaId))
-                return BadRequest("Header empresaId inválido.");
+            if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+                return errorResult!;
 
-            if (fechaDesde == default || fechaHasta == default)
-                return BadRequest("Debe especificar fechaDesde y fechaHasta.");
-
-            if (fechaDesde > fechaHasta)
-                return BadRequest("fechaDesde no puede ser mayor que fechaHasta.");
+            if (!TryValidarFechas(fechaDesde, fechaHasta, validarOrdenCronologico: true, out var errorFechas))
+                return errorFechas!;
 
             try
             {
                 var historial = await _servicioContabilidad.ObtenerHistorialIngresosEmpresaAsync(
                     empresaId,
                     fechaDesde,
-                    fechaHasta
-                );
+                    fechaHasta);
 
                 return Ok(historial);
             }
@@ -109,6 +103,40 @@ namespace Natural.Controllers.Areas.Contabilidad
             {
                 return BadRequest(ex.Message);
             }
+        }
+
+        private bool TryObtenerEmpresaId(out int empresaId, out IActionResult? errorResult)
+        {
+            errorResult = null;
+            empresaId = default;
+
+            var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
+            if (!int.TryParse(empresaIdHeader, out empresaId))
+            {
+                errorResult = BadRequest("Header 'empresaId' inválido.");
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool TryValidarFechas(DateTime fechaDesde, DateTime fechaHasta, bool validarOrdenCronologico, out IActionResult? errorResult)
+        {
+            errorResult = null;
+
+            if (fechaDesde == default || fechaHasta == default)
+            {
+                errorResult = BadRequest("Debe especificar fechaDesde y fechaHasta.");
+                return false;
+            }
+
+            if (validarOrdenCronologico && fechaDesde > fechaHasta)
+            {
+                errorResult = BadRequest("fechaDesde no puede ser mayor que fechaHasta.");
+                return false;
+            }
+
+            return true;
         }
     }
 }

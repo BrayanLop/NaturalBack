@@ -16,9 +16,14 @@ public class ConfiguracionGeneralController : ControllerBase
     [HttpPost("Crear")]
     public async Task<IActionResult> Crear([FromBody] ConfiguracionGeneralViewModel configuracion)
     {
-        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-        if (!int.TryParse(empresaIdHeader, out int empresaId))
-            return BadRequest("Header 'empresaId' inválido.");
+        if (configuracion is null)
+            return BadRequest("Debe proporcionar la configuración general.");
+
+        if (!ModelState.IsValid)
+            return ValidationProblem(ModelState);
+
+        if (!TryGetEmpresaId(out var empresaId, out var errorResult))
+            return errorResult;
 
         configuracion.EmpresaId = empresaId;
 
@@ -27,22 +32,25 @@ public class ConfiguracionGeneralController : ControllerBase
             var nuevaConfiguracion = await _servicioConfiguracion.CambiarPeriodicidadAsync(configuracion, configuracion.Periodicidad);
             return CreatedAtAction(nameof(ObtenerPorId), new { id = nuevaConfiguracion.EmpresaId }, nuevaConfiguracion);
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
             return BadRequest(ex.Message);
+        }
+        catch (Exception)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, "Se produjo un error inesperado al crear la configuración.");
         }
     }
 
     [HttpGet("Obtener/{id}")]
     public async Task<IActionResult> ObtenerPorId(int id)
     {
-        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-        if (!int.TryParse(empresaIdHeader, out int empresaId))
-            return BadRequest("Header 'empresaId' inválido.");
+        if (!TryGetEmpresaId(out _, out var errorResult))
+            return errorResult;
 
         var configuracion = await _servicioConfiguracion.ObtenerConfiguracionGeneralPorEmpresaAsync(id);
         if (configuracion == null)
-            return NotFound();
+            return NotFound("No se encontró configuración general para la empresa solicitada.");
 
         return Ok(configuracion);
     }
@@ -50,12 +58,20 @@ public class ConfiguracionGeneralController : ControllerBase
     [HttpPut("Actualizar/{id}")]
     public async Task<IActionResult> Actualizar(int id, [FromBody] ConfiguracionGeneralViewModel configuracion, [FromQuery] string periodicidadOriginal)
     {
-        if (id != configuracion.EmpresaId)
-            return BadRequest("Id de configuración no coincide.");
+        if (configuracion is null)
+            return BadRequest("Debe proporcionar la configuración general.");
 
-        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-        if (!int.TryParse(empresaIdHeader, out int empresaId))
-            return BadRequest("Header 'empresaId' inválido.");
+        if (!ModelState.IsValid)
+            return ValidationProblem(ModelState);
+
+        if (!TryGetEmpresaId(out var empresaId, out var errorResult))
+            return errorResult;
+
+        if (id != empresaId)
+            return BadRequest("El id de la ruta no coincide con el header 'empresaId'.");
+
+        if (string.IsNullOrWhiteSpace(periodicidadOriginal))
+            return BadRequest("Debe proporcionar la periodicidad original.");
 
         configuracion.EmpresaId = empresaId;
 
@@ -63,16 +79,35 @@ public class ConfiguracionGeneralController : ControllerBase
         {
             var nuevaPeriodicidad = configuracion.Periodicidad;
             configuracion.Periodicidad = periodicidadOriginal;
+
             var actualizado = await _servicioConfiguracion.CambiarPeriodicidadAsync(configuracion, nuevaPeriodicidad);
             if (actualizado == null)
-                return NotFound();
+                return NotFound("No se encontró la configuración general a actualizar.");
 
-            return Ok(configuracion);
+            return Ok(actualizado);
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
             return BadRequest(ex.Message);
         }
+        catch (Exception)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, "Se produjo un error inesperado al actualizar la configuración.");
+        }
+    }
+
+    private bool TryGetEmpresaId(out int empresaId, out IActionResult? errorResult)
+    {
+        empresaId = default;
+        errorResult = null;
+
+        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
+        if (!int.TryParse(empresaIdHeader, out empresaId))
+        {
+            errorResult = BadRequest("Header 'empresaId' inválido.");
+            return false;
+        }
+
+        return true;
     }
 }
- 
