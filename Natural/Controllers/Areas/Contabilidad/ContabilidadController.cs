@@ -1,7 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Natural.Data.Areas.Configuracion;
 using Natural.Data.Areas.Contabilidad;
-using Natural.Models.Areas.Configuracion;
 
 namespace Natural.Controllers.Areas.Contabilidad
 {

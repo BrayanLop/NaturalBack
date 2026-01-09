@@ -24,7 +24,8 @@ namespace Natural.Data.Areas.Gestion
                     ServicioId = r.ServicioId,
                     EmpresaId = r.EmpresaId,
                     FechaServicio = DateTime.UtcNow,
-                    Liquidado = false
+                    Liquidado = false,
+                    Confirmado = r.Confirmado
                 }).OrderBy(q => q.FechaServicio).ToList();
 
                 await _context.RegistroServicio.AddRangeAsync(registrosEntidad);
@@ -57,9 +58,7 @@ namespace Natural.Data.Areas.Gestion
                 .ToListAsync();
         }
 
-        public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosFechaActualAsync(
-            int empresaId,
-            int personaId)
+        public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosFechaActualAsync(int empresaId, int personaId)
         {
             var hoyUtc = DateTime.UtcNow.Date;
             var mananaUtc = hoyUtc.AddDays(1);
@@ -96,7 +95,9 @@ namespace Natural.Data.Areas.Gestion
                     NombreServicio = r.Servicio != null
                         ? r.Servicio.Nombre
                         : null,
-                    FechaServicio = r.FechaServicio
+                    FechaServicio = r.FechaServicio,
+                    Liquidado = r.Liquidado,
+                    Confirmado = r.Confirmado
                 })
                 .ToListAsync();
         }
@@ -115,14 +116,13 @@ namespace Natural.Data.Areas.Gestion
                     EmpresaId = r.EmpresaId,
                     NombrePersona = r.Persona != null ? r.Persona.Nombre + " " + r.Persona.Apellido : null,
                     NombreServicio = r.Servicio != null ? r.Servicio.Nombre : null,
-                    FechaServicio = r.FechaServicio
+                    FechaServicio = r.FechaServicio,
+                    Confirmado = r.Confirmado
                 })
                 .ToListAsync();
         }
 
-        public async Task<List<ConsolidadoDiaViewModel>> ObtenerConsolidadoDiaAsync(
-            int empresaId,
-            int personaId)
+        public async Task<List<ConsolidadoDiaViewModel>> ObtenerConsolidadoDiaAsync(int empresaId, int personaId)
         {
             var hoyUtc = DateTime.UtcNow.Date;
             var mananaUtc = hoyUtc.AddDays(1);
@@ -158,6 +158,27 @@ namespace Natural.Data.Areas.Gestion
                     CantidadServicios = g.Count()
                 })
                 .ToListAsync();
+        }
+
+        public async Task<bool> ActualizarConfirmadoAsync(int registroServicioId, int empresaId, bool confirmado)
+        {
+            var registro = await _context.RegistroServicio
+                .FirstOrDefaultAsync(r => r.Id == registroServicioId && r.EmpresaId == empresaId);
+
+            if (registro is null)
+            {
+                return false;
+            }
+
+            if (registro.Confirmado == confirmado)
+            {
+                return true;
+            }
+
+            registro.Confirmado = confirmado;
+            await _context.SaveChangesAsync();
+
+            return true;
         }
     }
 }

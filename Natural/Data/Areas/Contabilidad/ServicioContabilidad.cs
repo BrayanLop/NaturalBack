@@ -18,37 +18,34 @@ namespace Natural.Data.Areas.Contabilidad
         {
             try
             {
-                // 1. Obtener la configuración de la empresa
                 var configGeneral = await _context.ConfiguracionGeneral
                     .FirstOrDefaultAsync(c => c.EmpresaId == empresaId);
 
                 if (configGeneral == null)
                     throw new Exception("No se encontró la configuración para la empresa.");
 
-                // 2. Calcular fecha límite según periodicidad
                 DateTime fechaLimiteUtc = DateTime.UtcNow.Date;
                 switch (configGeneral.Periodicidad.ToUpper())
                 {
-                    case "M": // Mes
+                    case "M":
                         fechaLimiteUtc = fechaLimiteUtc.AddMonths(-configGeneral.ValorPeriodicidad);
                         break;
-                    case "Q": // Quincenal
+                    case "Q":
                         fechaLimiteUtc = fechaLimiteUtc.AddDays(-15);
                         break;
-                    case "S": // Semanal
+                    case "S":
                         fechaLimiteUtc = fechaLimiteUtc.AddDays(-7);
                         break;
-                    case "D": // Días específicos
+                    case "D":
                         fechaLimiteUtc = fechaLimiteUtc.AddDays(-configGeneral.ValorPeriodicidad);
                         break;
                     default:
-                        fechaLimiteUtc = fechaLimiteUtc.AddDays(-5); // fallback
+                        fechaLimiteUtc = fechaLimiteUtc.AddDays(-5);
                         break;
                 }
 
                 var fechaHoyUtc = DateTime.UtcNow.Date.AddDays(1);
 
-                // 3. Consultar registros según fecha límite
                 var registros = await _context.RegistroServicio
                     .Where(r =>
                         r.EmpresaId == empresaId &&
@@ -64,7 +61,23 @@ namespace Natural.Data.Areas.Contabilidad
 
                 var servicios = await _context.Servicio.ToListAsync();
 
-                // 4. Agrupar y mapear
+                var configuracionesPorServicio = configuraciones
+                    .GroupBy(c => c.ServicioId)
+                    .ToDictionary(g => g.Key, g => g.First());
+
+                var serviciosPorId = servicios
+                    .GroupBy(s => s.Id)
+                    .ToDictionary(g => g.Key, g => g.First());
+
+                decimal CalcularPagoTrabajador(int servicioId)
+                {
+                    configuracionesPorServicio.TryGetValue(servicioId, out var config);
+                    serviciosPorId.TryGetValue(servicioId, out var servicio);
+                    var porcentaje = config?.PorcentajeTrabajador ?? 0m;
+                    var precio = servicio?.Precio ?? 0m;
+                    return precio * (porcentaje / 100m);
+                }
+
                 var pagosAgrupados = registros
                     .Where(r => r.Persona != null)
                     .GroupBy(r => new { r.PersonaId, r.Persona.Nombre, r.Persona.Apellido })
@@ -74,35 +87,28 @@ namespace Natural.Data.Areas.Contabilidad
                             .GroupBy(r => r.ServicioId)
                             .Select(grupoServicio =>
                             {
-                                var servicio = servicios.FirstOrDefault(s => s.Id == grupoServicio.Key);
-                                var config = configuraciones.FirstOrDefault(c => c.ServicioId == grupoServicio.Key);
-
-                                var precio = servicio?.Precio ?? 0;
-                                var porcentaje = config?.PorcentajeTrabajador ?? 0;
-                                var cantidad = grupoServicio.Count();
-
+                                serviciosPorId.TryGetValue(grupoServicio.Key, out var servicio);
                                 return new ServicioDetalleViewModel
                                 {
                                     Nombre = servicio?.Nombre ?? "Desconocido",
-                                    Cantidad = cantidad
+                                    Cantidad = grupoServicio.Count()
                                 };
                             })
                             .ToList();
 
-                        var total = grupoPersona.Sum(r =>
-                        {
-                            var config = configuraciones.FirstOrDefault(c => c.ServicioId == r.ServicioId);
-                            var servicio = servicios.FirstOrDefault(s => s.Id == r.ServicioId);
-                            var porcentaje = config?.PorcentajeTrabajador ?? 0;
-                            var precio = servicio?.Precio ?? 0;
-                            return precio * (porcentaje / 100);
-                        });
+                        var total = grupoPersona
+                            .Where(r => r.Confirmado)
+                            .Sum(r => CalcularPagoTrabajador(r.ServicioId));
+                        var totalSinConfirmar = grupoPersona
+                            .Where(r => !r.Confirmado)
+                            .Sum(r => CalcularPagoTrabajador(r.ServicioId));
 
                         return new PagoPersonaViewModel
                         {
                             PersonaId = grupoPersona.Key.PersonaId,
                             NombrePersona = $"{grupoPersona.Key.Nombre} {grupoPersona.Key.Apellido}",
                             TotalPagado = total,
+                            TotalSinConfirmar = totalSinConfirmar,
                             Servicios = detallesServicio
                         };
                     })
@@ -177,18 +183,25 @@ namespace Natural.Data.Areas.Contabilidad
                     .GroupBy(c => c.ServicioId)
                     .ToDictionary(g => g.Key, g => g.First());
 
+                decimal CalcularPagoTrabajador(RegistroServicio registro)
+                {
+                    if (!configuracionesPorServicio.TryGetValue(registro.ServicioId, out var configServicio))
+                    {
+                        return 0m;
+                    }
+
+                    var precioServicio = registro.Servicio?.Precio ?? 0m;
+                    return precioServicio * (configServicio.PorcentajeTrabajador / 100m);
+                }
+
                 // 4. Agrupar por día y mapear
                 return registros
                     .GroupBy(r => r.FechaServicio!.Value.Date)
                     .Select(g =>
                     {
-                        var totalMontoDia = g.Sum(registro =>
-                        {
-                            configuracionesPorServicio.TryGetValue(registro.ServicioId, out var configServicio);
-                            var porcentajeTrabajador = configServicio?.PorcentajeTrabajador ?? 0m;
-                            var precioServicio = registro.Servicio?.Precio ?? 0m;
-                            return precioServicio * (porcentajeTrabajador / 100m);
-                        });
+                        var totalMontoDia = g
+                            .Where(q => q.Confirmado)
+                            .Sum(registro => CalcularPagoTrabajador(registro));
 
                         return new DetalleServicioPorDiaViewModel
                         {
@@ -197,8 +210,11 @@ namespace Natural.Data.Areas.Contabilidad
                             TotalServicios = g.Count(),
                             Servicios = g.Select(s => new ServicioDetalleItem
                             {
+                                RegistroServicioId = s.Id,
                                 NombreServicio = s.Servicio?.Nombre ?? "Servicio desconocido",
-                                Hora = s.FechaServicio!.Value
+                                Hora = s.FechaServicio!.Value,
+                                Confirmado = s.Confirmado,
+                                ValorTrabajador = CalcularPagoTrabajador(s)
                             }).ToList()
                         };
                     })
@@ -254,6 +270,7 @@ namespace Natural.Data.Areas.Contabilidad
                         r.PersonaId == personaId &&
                         r.FechaServicio >= fechaLimiteUtc &&
                         r.FechaServicio < fechaHoyUtc &&
+                        r.Confirmado &&
                         !r.Liquidado)
                     .Include(r => r.Servicio)
                     .ToListAsync();

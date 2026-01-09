@@ -85,4 +85,30 @@ public class RegistroServicioController : ControllerBase
 
         return Ok(consolidado);
     }
+
+    [HttpPatch("ActualizarConfirmado/{registroServicioId:int}")]
+    public async Task<IActionResult> ActualizarConfirmado(int registroServicioId, [FromQuery] bool? confirmado)
+    {
+        try
+        {
+            if (!confirmado.HasValue)
+                return BadRequest("Debe proporcionar el estado de confirmación.");
+
+            var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
+            if (!int.TryParse(empresaIdHeader, out int empresaId))
+                return BadRequest("Header 'empresaId' inválido.");
+
+            var actualizado = await _servicioGestion.ActualizarConfirmadoAsync(registroServicioId, empresaId, confirmado.Value);
+            if (!actualizado)
+                return NotFound("No se pudo actualizar el registro especificado.");
+
+            return Ok("Estado de confirmación actualizado correctamente.");
+        }
+        catch (Exception ex)
+        {
+            return Problem(
+                detail: "Ocurrió un error inesperado al actualizar el registro.",
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
 }

@@ -12,5 +12,6 @@
         public string? NombreServicio { get; set; }
         public DateTime? FechaServicio { get; set; }
         public bool Liquidado { get; set; }
+        public bool Confirmado { get; set; }
     }
 }
