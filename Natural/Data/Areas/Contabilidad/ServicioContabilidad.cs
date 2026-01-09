@@ -488,5 +488,66 @@ namespace Natural.Data.Areas.Contabilidad
 
             return $"{nombre} {apellido}";
         }
+
+        public async Task<EgresosEmpresa> RegistrarEgresoAsync(int empresaId, EgresoEmpresaViewModel egresoEmpresa)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(egresoEmpresa.ValorEgreso, 0m);
+            if (string.IsNullOrWhiteSpace(egresoEmpresa.Motivo))
+            {
+                throw new ArgumentException("El motivo del egreso es obligatorio.", nameof(egresoEmpresa.Motivo));
+            }
+
+            var fechaRegistroColombia = egresoEmpresa.FechaRegistro?.ToDateTime(TimeOnly.MinValue)
+                ?? TimeZoneHelper.ColombiaNow;
+
+            var fechaRegistroUtc = TimeZoneHelper.ConvertColombiaToUtc(fechaRegistroColombia);
+
+            var egreso = new EgresosEmpresa
+            {
+                EmpresaId = empresaId,
+                PersonaId = egresoEmpresa.PersonaId,
+                ValorEgreso = egresoEmpresa.ValorEgreso,
+                Motivo = egresoEmpresa.Motivo,
+                FechaRegistro = fechaRegistroUtc
+            };
+
+            await _context.EgresosEmpresa.AddAsync(egreso);
+            await _context.SaveChangesAsync();
+
+            return egreso;
+        }
+
+        public async Task<List<EgresoEmpresaViewModel>> ObtenerEgresosPorRangoAsync(int empresaId, DateOnly fechaInicio, DateOnly fechaFin)
+        {
+            if (fechaFin < fechaInicio)
+            {
+                (fechaInicio, fechaFin) = (fechaFin, fechaInicio);
+            }
+
+            var inicioUtc = TimeZoneHelper.ConvertColombiaToUtc(fechaInicio.ToDateTime(TimeOnly.MinValue));
+            var finUtcExclusivo = TimeZoneHelper.ConvertColombiaToUtc(fechaFin.AddDays(1).ToDateTime(TimeOnly.MinValue));
+
+            return await _context.EgresosEmpresa
+                .AsNoTracking()
+                .Include(e => e.Persona)
+                .Where(e =>
+                    e.EmpresaId == empresaId &&
+                    e.FechaRegistro >= inicioUtc &&
+                    e.FechaRegistro < finUtcExclusivo)
+                .OrderByDescending(e => e.FechaRegistro)
+                .ThenByDescending(e => e.EgresoId)
+                .Select(e => new EgresoEmpresaViewModel
+                {
+                    EmpresaId = e.EmpresaId ?? empresaId,
+                    PersonaId = e.PersonaId ?? 0,
+                    Motivo = e.Motivo ?? string.Empty,
+                    NombrePersona = e.Persona != null
+                        ? ObtenerNombreCompleto(e.Persona.Nombre, e.Persona.Apellido)
+                        : string.Empty,
+                    ValorEgreso = e.ValorEgreso ?? 0m,
+                    FechaRegistro = DateOnly.FromDateTime(TimeZoneHelper.ConvertUtcToColombia(e.FechaRegistro))
+                })
+                .ToListAsync();
+        }
     }
 }
