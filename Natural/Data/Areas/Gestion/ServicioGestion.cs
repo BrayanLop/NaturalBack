@@ -28,7 +28,8 @@ namespace Natural.Data.Areas.Gestion
                         EmpresaId = r.EmpresaId,
                         FechaServicio = r.FechaServicio ?? fechaActual,
                         Liquidado = false,
-                        Confirmado = r.Confirmado
+                        Confirmado = r.Confirmado,
+                        FormaPago = r.FormaPago
                     })
                     .OrderBy(r => r.FechaServicio)
                     .ToList();
@@ -58,7 +59,8 @@ namespace Natural.Data.Areas.Gestion
                     EmpresaId = r.EmpresaId,
                     NombrePersona = r.Persona != null ? r.Persona.Nombre + " " + r.Persona.Apellido : null,
                     NombreServicio = r.Servicio != null ? r.Servicio.Nombre : null,
-                    FechaServicio = r.FechaServicio
+                    FechaServicio = r.FechaServicio,
+                    FormaPago = r.FormaPago,
                 })
                 .ToListAsync();
         }
@@ -91,7 +93,8 @@ namespace Natural.Data.Areas.Gestion
                         : null,
                     FechaServicio = r.FechaServicio,
                     Liquidado = r.Liquidado,
-                    Confirmado = r.Confirmado
+                    Confirmado = r.Confirmado,
+                    FormaPago = r.FormaPago
                 })
                 .ToListAsync();
         }
@@ -131,7 +134,8 @@ namespace Natural.Data.Areas.Gestion
                     NombrePersona = r.Persona != null ? r.Persona.Nombre + " " + r.Persona.Apellido : null,
                     NombreServicio = r.Servicio != null ? r.Servicio.Nombre : null,
                     FechaServicio = r.FechaServicio,
-                    Confirmado = r.Confirmado
+                    Confirmado = r.Confirmado,
+                    FormaPago = r.FormaPago
                 })
                 .ToListAsync();
         }

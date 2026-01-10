@@ -13,5 +13,6 @@
         public DateTime? FechaServicio { get; set; }
         public bool Liquidado { get; set; }
         public bool Confirmado { get; set; }
+        public char? FormaPago { get; set; }
     }
 }
