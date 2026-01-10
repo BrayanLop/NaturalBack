@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Natural.Data.Areas.Contabilidad;
 
 namespace Natural.Controllers.Areas.Contabilidad
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class ContabilidadController : ControllerBase

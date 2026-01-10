@@ -1,10 +1,14 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Natural.Data.Areas.Configuracion;
 using Natural.Data.Areas.Contabilidad;
 using Natural.Data.Areas.Estructura;
 using Natural.Data.Areas.Gestion;
+using Natural.Data.Areas.Seguridad;
 using Natural.Data.Areas.Sesion;
 using Natural.Data.Domain;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +27,9 @@ builder.Services.AddScoped<ServicioConfiguracion>();
 
 builder.Services.AddScoped<ServicioContabilidad>();
 
+builder.Services.AddScoped<ServicioSeguridad>();
+
+
 // Habilita CORS
 builder.Services.AddCors(options =>
 {
@@ -39,6 +46,24 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+       .AddJwtBearer(options =>
+       {
+           options.TokenValidationParameters = new TokenValidationParameters
+           {
+               ValidateIssuer = true,
+               ValidateAudience = true,
+               ValidateLifetime = true,
+               ValidateIssuerSigningKey = true,
+               ValidIssuer = builder.Configuration["Jwt:Issuer"],
+               ValidAudience = builder.Configuration["Jwt:Audience"],
+               IssuerSigningKey = new SymmetricSecurityKey(
+                   Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+           };
+       });
+
+   builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -50,6 +75,7 @@ app.UseCors("AllowAll");
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

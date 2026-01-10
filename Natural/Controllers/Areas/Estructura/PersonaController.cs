@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Natural.Data.Areas.Estructura;
 using Natural.Models.Areas.Estructura;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class PersonaController : ControllerBase

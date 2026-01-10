@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Natural.Data.Areas.Contabilidad;
 using Natural.Models.Areas.Contabilidad;
 
 namespace Natural.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class EgresosEmpresaController : ControllerBase

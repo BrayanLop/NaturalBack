@@ -247,19 +247,12 @@ namespace Natural.Data.Areas.Estructura
                 return false;
             }
 
-            usuario.ClaveHash = HashPassword(nuevaContrasena);
+            usuario.ClaveHash = nuevaContrasena;
 
             _context.Usuario.Update(usuario);
             await _context.SaveChangesAsync();
 
             return true;
-        }
-
-        private static string HashPassword(string password)
-        {
-            var bytes = Encoding.UTF8.GetBytes(password);
-            var hash = SHA256.HashData(bytes);
-            return Convert.ToHexString(hash);
         }
 
         #endregion Usuario
