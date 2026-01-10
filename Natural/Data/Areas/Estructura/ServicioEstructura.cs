@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Natural.Data.Domain;
 using Natural.Data.Domain.Estructura;
 using Natural.Models.Areas.Estructura;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Natural.Data.Areas.Estructura
 {
@@ -209,6 +211,8 @@ namespace Natural.Data.Areas.Estructura
             return true;
         }
 
+
+
         #endregion Persona
 
         #region Rol
@@ -230,6 +234,35 @@ namespace Natural.Data.Areas.Estructura
         }
 
         #endregion Rol
+
+        #region Usuario
+
+        public async Task<bool> ActualizarContrasenaUsuarioAsync(int usuarioId, string nuevaContrasena)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(nuevaContrasena);
+
+            var usuario = await _context.Usuario.FindAsync(usuarioId);
+            if (usuario == null)
+            {
+                return false;
+            }
+
+            usuario.ClaveHash = HashPassword(nuevaContrasena);
+
+            _context.Usuario.Update(usuario);
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+        private static string HashPassword(string password)
+        {
+            var bytes = Encoding.UTF8.GetBytes(password);
+            var hash = SHA256.HashData(bytes);
+            return Convert.ToHexString(hash);
+        }
+
+        #endregion Usuario
 
         private static ServicioViewModel MapServicio(Servicio servicio)
         {

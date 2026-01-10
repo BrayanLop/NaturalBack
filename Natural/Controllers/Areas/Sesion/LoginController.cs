@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Identity.Data;
+﻿using System.Security.Cryptography;
+using System.Text;
+using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Natural.Data.Areas.Estructura;
 using Natural.Data.Areas.Sesion;
@@ -25,12 +27,16 @@ namespace Natural.Controllers.Areas.Sesion
                 return BadRequest("Debe enviar las credenciales");
 
             if (string.IsNullOrWhiteSpace(request.Email))
-                return BadRequest("Debe enviar la cédula");
+                return BadRequest("Debe enviar el email");
 
             if (string.IsNullOrWhiteSpace(request.Password))
                 return BadRequest("Debe enviar la contraseña");
 
-            var usuario = await _servicioLogin.ObtenerUsuarioAsync(request.Email, request.Password);
+            var identificador = request.Email.Trim();
+            // ✅ NO hashear aquí, la contraseña ya viene hasheada del frontend
+            var passwordHash = request.Password;
+
+            var usuario = await _servicioLogin.ObtenerUsuarioAsync(identificador, passwordHash);
 
             if (usuario is null)
                 return Unauthorized("Usuario no encontrado");
@@ -47,10 +53,10 @@ namespace Natural.Controllers.Areas.Sesion
                 id = persona.Id,
                 nombre = persona.Nombre,
                 empresaId = persona.EmpresaId,
-                rol = rol
+                rol
             };
 
             return Ok(response);
         }
-    }
+    }   
 }
