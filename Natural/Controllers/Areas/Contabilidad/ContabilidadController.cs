@@ -15,12 +15,12 @@ namespace Natural.Controllers.Areas.Contabilidad
         }
 
         [HttpGet("PagosUltimosDias")]
-        public async Task<IActionResult> PagosUltimosDias()
+        public async Task<IActionResult> PagosUltimosDias([FromQuery]int? personaId)
         {
             if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
                 return errorResult!;
 
-            var pagos = await _servicioContabilidad.ObtenerPagosAgrupadosUltimosDiasAsync(empresaId);
+            var pagos = await _servicioContabilidad.ObtenerPagosAgrupadosUltimosDiasAsync(empresaId, personaId);
             return Ok(pagos);
         }
 

@@ -221,6 +221,14 @@ namespace Natural.Data.Areas.Estructura
                     select r.Codigo).FirstOrDefaultAsync();
         }
 
+        public Task<string?> ObtenerRolUsuario(int usuarioId)
+        {
+            return (from pr in _context.UsuarioRol.AsNoTracking()
+                    join r in _context.Rol.AsNoTracking() on pr.RolCodigo equals r.Codigo
+                    where pr.UsuarioId == usuarioId
+                    select r.Codigo).FirstOrDefaultAsync();
+        }
+
         #endregion Rol
 
         private static ServicioViewModel MapServicio(Servicio servicio)

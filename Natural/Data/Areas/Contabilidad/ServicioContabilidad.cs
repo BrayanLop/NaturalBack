@@ -17,7 +17,7 @@ namespace Natural.Data.Areas.Contabilidad
             _context = context;
         }
 
-        public async Task<List<PagoPersonaViewModel>> ObtenerPagosAgrupadosUltimosDiasAsync(int empresaId)
+        public async Task<List<PagoPersonaViewModel>> ObtenerPagosAgrupadosUltimosDiasAsync(int empresaId, int? personaId = null)
         {
             try
             {
@@ -30,7 +30,8 @@ namespace Natural.Data.Areas.Contabilidad
                         r.EmpresaId == empresaId &&
                         r.FechaServicio >= fechaLimiteUtc &&
                         r.FechaServicio < fechaHoyUtc &&
-                        !r.Liquidado)
+                        !r.Liquidado &&
+                        (!personaId.HasValue || r.PersonaId == personaId.Value))
                     .Include(r => r.Persona)
                     .ToListAsync();
 

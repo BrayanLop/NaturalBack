@@ -35,8 +35,9 @@ namespace Natural.Controllers.Areas.Sesion
             if (usuario is null)
                 return Unauthorized("Usuario no encontrado");
 
+            var rol = await _servicioEstructura.ObtenerRolUsuario(usuario.Id);
+
             var persona = await _servicioEstructura.ObtenerPersonaPorIdAsync(usuario.PersonaId);
-            var rol = await _servicioEstructura.ObtenerRol(usuario.PersonaId);
 
             if (persona is null)
                 return NotFound("No se encontró la persona asociada");

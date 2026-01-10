@@ -24,6 +24,7 @@ public partial class NaturalDbContext : DbContext
     public virtual DbSet<Empresa> Empresa { get; set; }
     public virtual DbSet<Persona> Persona { get; set; }
     public virtual DbSet<PersonaRol> PersonaRol { get; set; }
+    public virtual DbSet<UsuarioRol> UsuarioRol { get; set; }
     public virtual DbSet<RegistroServicio> RegistroServicio { get; set; }
     public virtual DbSet<Rol> Rol { get; set; }
     public virtual DbSet<Servicio> Servicio { get; set; }
@@ -128,6 +129,27 @@ public partial class NaturalDbContext : DbContext
                 .HasForeignKey(d => d.RolCodigo)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_PersonaRol_Rol");
+        });
+
+        modelBuilder.Entity<UsuarioRol>(entity =>
+        {
+            entity.ToTable("UsuarioRol");
+
+            entity.HasKey(e => new { e.UsuarioId, e.RolCodigo });
+
+            entity.Property(e => e.RolCodigo).HasMaxLength(10);
+
+            entity.HasOne(d => d.Persona)
+                .WithMany()
+                .HasForeignKey(d => d.UsuarioId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_UsuarioRol_Usuario");
+
+            entity.HasOne(d => d.RolCodigoNavigation)
+                .WithMany()
+                .HasForeignKey(d => d.RolCodigo)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_UsuarioRol_Rol");
         });
 
         modelBuilder.Entity<RegistroServicio>(entity =>
