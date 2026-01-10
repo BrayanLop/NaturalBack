@@ -17,7 +17,7 @@ public partial class Persona
 
     public string Cedula { get; set; } = null!;
 
-    public string Residencia { get; set; } = null!;
+    public string? Residencia { get; set; } = null!;
 
     public string Email { get; set; } = null!;
 

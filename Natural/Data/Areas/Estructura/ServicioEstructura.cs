@@ -32,7 +32,14 @@ namespace Natural.Data.Areas.Estructura
             Edad = persona.Edad,
             Celular = persona.Celular,
             FechaNacimiento = persona.FechaNacimiento,
-            EmpresaId = persona.EmpresaId
+            EmpresaId = persona.EmpresaId,
+            Empresa = new EmpresaViewModel
+            {
+                Id = persona.Empresa.Id,
+                Nombre = persona.Empresa.Nombre,
+                Direccion = persona.Empresa.Direccion,
+                Telefono = persona.Empresa.Telefono,
+            }
         };
 
         private readonly NaturalDbContext _context;
@@ -164,7 +171,7 @@ namespace Natural.Data.Areas.Estructura
 
         public Task<PersonaViewModel?> ObtenerPersonaPorIdAsync(int id)
         {
-            return _context.Persona
+            return _context.Persona.Include("Empresa")
                 .AsNoTracking()
                 .Where(p => p.Id == id)
                 .Select(PersonaProjection)

@@ -13,6 +13,7 @@
         public DateTime FechaNacimiento { get; set; }
         public int? EmpresaId { get; set; }
         public string Rol { get; set; }
+        public EmpresaViewModel Empresa { get; set; }
     }
 
 }

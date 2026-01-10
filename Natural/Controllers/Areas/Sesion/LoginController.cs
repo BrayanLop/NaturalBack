@@ -63,6 +63,7 @@ namespace Natural.Controllers.Areas.Sesion
                     id = persona.Id,
                     nombre = persona.Nombre,
                     empresaId = persona.EmpresaId,
+                    nombreEmpresa = persona.Empresa?.Nombre,
                     rol
                 }
             };
