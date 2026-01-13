@@ -60,7 +60,8 @@ namespace Natural.Controllers.Areas.Sesion
                 expiraEn,
                 persona = new
                 {
-                    id = usuario.Id,
+                    id = persona.Id,
+                    idUsuario = usuario.Id,
                     nombre = persona.Nombre,
                     empresaId = persona.EmpresaId,
                     nombreEmpresa = persona.Empresa?.Nombre,
