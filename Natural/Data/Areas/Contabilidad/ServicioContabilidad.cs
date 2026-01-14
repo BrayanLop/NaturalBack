@@ -550,5 +550,60 @@ namespace Natural.Data.Areas.Contabilidad
                 })
                 .ToListAsync();
         }
+
+        public async Task<ConsolidadoIngresosEgresosViewModel> ObtenerConsolidadoIngresosEgresosAsync(int empresaId, DateTime fechaDesde, DateTime fechaHasta)
+        {
+            var inicio = DateOnly.FromDateTime(fechaDesde.Date);
+            var fin = DateOnly.FromDateTime(fechaHasta.Date);
+
+            // Ingresos
+            var totalIngresos = await _context.IngresosEmpresas
+                .Where(i => i.EmpresaId == empresaId && i.FechaIngreso >= inicio && i.FechaIngreso <= fin)
+                .SumAsync(i => i.ValorIngreso ?? 0);
+
+            // Egresos
+            var inicioUtc = TimeZoneHelper.ConvertColombiaToUtc(fechaDesde.Date);
+            var finUtcExclusivo = TimeZoneHelper.ConvertColombiaToUtc(fechaHasta.Date.AddDays(1));
+            var totalEgresos = await _context.EgresosEmpresa
+                .Where(e => e.EmpresaId == empresaId && e.FechaRegistro >= inicioUtc && e.FechaRegistro < finUtcExclusivo)
+                .SumAsync(e => e.ValorEgreso ?? 0);
+
+            return new ConsolidadoIngresosEgresosViewModel
+            {
+                TotalIngresos = totalIngresos,
+                TotalEgresos = totalEgresos
+            };
+        }
+
+        public async Task<ConsolidadoFormaPagoViewModel> ObtenerConsolidadoPorFormaPagoAsync(int empresaId, DateTime fechaDesde, DateTime fechaHasta, string? formaPago = null)
+        {
+            var (inicioUtc, finUtc) = ConstruirRangoUtc(fechaDesde, fechaHasta);
+
+            var query = _context.RegistroServicio
+                .Where(r => r.EmpresaId == empresaId && r.FechaServicio >= inicioUtc && r.FechaServicio < finUtc);
+
+            if (!string.IsNullOrWhiteSpace(formaPago) && formaPago.Length ==1)
+            {
+                char formaPagoChar = formaPago[0];
+                query = query.Where(r => r.FormaPago == formaPagoChar);
+            }
+
+            var registros = await query.Include(r => r.Servicio).ToListAsync();
+
+            var cantidadTransferencia = registros.Count(r => r.FormaPago == 'T');
+            var totalTransferencia = registros.Where(r => r.FormaPago == 'T').Sum(r => r.Servicio?.Precio ??0m);
+            var cantidadEfectivo = registros.Count(r => r.FormaPago == 'E');
+            var totalEfectivo = registros.Where(r => r.FormaPago == 'E').Sum(r => r.Servicio?.Precio ??0m);
+
+            return new ConsolidadoFormaPagoViewModel
+            {
+                CantidadTransferencia = cantidadTransferencia,
+                TotalTransferencia = totalTransferencia,
+                CantidadEfectivo = cantidadEfectivo,
+                TotalEfectivo = totalEfectivo
+            };
+        }
+
+
     }
 }

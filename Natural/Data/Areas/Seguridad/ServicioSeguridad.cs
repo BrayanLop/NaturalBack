@@ -26,7 +26,7 @@ namespace Natural.Data.Areas.Seguridad
 
             var expiresMinutes = int.TryParse(_configuration["Jwt:ExpiresMinutes"], out var minutes)
                 ? minutes
-                : 60;
+                : 720;
 
             var claims = new List<Claim>
             {

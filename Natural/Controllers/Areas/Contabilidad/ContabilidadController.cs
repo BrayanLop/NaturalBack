@@ -107,6 +107,34 @@ namespace Natural.Controllers.Areas.Contabilidad
             }
         }
 
+        [HttpGet("ConsolidadoIngresosEgresos")]
+        public async Task<IActionResult> ConsolidadoIngresosEgresos(
+            [FromQuery] DateTime fechaDesde,
+            [FromQuery] DateTime fechaHasta)
+        {
+            if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+                return errorResult!;
+
+            if (!TryValidarFechas(fechaDesde, fechaHasta, validarOrdenCronologico: true, out var errorFechas))
+                return errorFechas!;
+
+            var consolidado = await _servicioContabilidad.ObtenerConsolidadoIngresosEgresosAsync(empresaId, fechaDesde, fechaHasta);
+            return Ok(consolidado);
+        }
+
+        [HttpGet("ConsolidadoFormaPago")]
+        public async Task<IActionResult> ConsolidadoFormaPago([FromQuery] DateTime fechaDesde, [FromQuery] DateTime fechaHasta, [FromQuery] string? formaPago)
+        {
+            if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+                return errorResult!;
+
+            if (!TryValidarFechas(fechaDesde, fechaHasta, validarOrdenCronologico: true, out var errorFechas))
+                return errorFechas!;
+
+            var consolidado = await _servicioContabilidad.ObtenerConsolidadoPorFormaPagoAsync(empresaId, fechaDesde, fechaHasta, formaPago);
+            return Ok(consolidado);
+        }
+
         private bool TryObtenerEmpresaId(out int empresaId, out IActionResult? errorResult)
         {
             errorResult = null;
