@@ -21,5 +21,6 @@ public partial class RegistroServicio
     public bool Liquidado { get; set; }
     public bool Confirmado { get; set; }
     public char? FormaPago { get; set; }
+    public DateTime? FechaLiquidado { get; set; }
 
 }

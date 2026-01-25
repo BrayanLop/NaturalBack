@@ -229,6 +229,7 @@ namespace Natural.Data.Areas.Contabilidad
                     }
 
                     registro.Liquidado = true;
+                    registro.FechaLiquidado = DateTime.UtcNow;
                 }
 
                 await _context.IngresosEmpresas.AddRangeAsync(ingresos);
@@ -253,8 +254,9 @@ namespace Natural.Data.Areas.Contabilidad
                     .Where(r =>
                         r.EmpresaId == empresaId &&
                         r.Liquidado &&
-                        r.FechaServicio >= inicioUtc &&
-                        r.FechaServicio < finUtc)
+                        r.FechaLiquidado != null &&
+                        r.FechaLiquidado >= inicioUtc &&
+                        r.FechaLiquidado < finUtc)
                     .Include(r => r.Persona)
                     .Include(r => r.Servicio)
                     .AsQueryable();
@@ -269,13 +271,13 @@ namespace Natural.Data.Areas.Contabilidad
                     .ToListAsync());
 
                 var registros = await query
-                    .Where(r => r.Persona != null && r.Servicio != null && r.FechaServicio.HasValue)
+                    .Where(r => r.Persona != null && r.Servicio != null && r.FechaLiquidado.HasValue)
                     .ToListAsync();
 
                 return registros
                     .GroupBy(r =>
                     {
-                        var fechaColombia = TimeZoneHelper.ConvertUtcToColombia(r.FechaServicio!.Value).Date;
+                        var fechaColombia = TimeZoneHelper.ConvertUtcToColombia(r.FechaLiquidado!.Value).Date;
                         return new
                         {
                             r.PersonaId,
