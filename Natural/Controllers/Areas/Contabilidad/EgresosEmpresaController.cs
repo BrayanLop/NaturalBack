@@ -54,6 +54,16 @@ public class EgresosEmpresaController : ControllerBase
         return Ok(egresos);
     }
 
+    [HttpGet("ObtenerEgresosPorPersona")]
+    public async Task<IActionResult> ObtenerEgresosPorPersona([FromQuery] int personaId)
+    {
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+            return errorResult!;
+
+        var egresos = await _servicioContabilidad.ObtenerEgresosPorPersonaAsync(empresaId, personaId);
+        return Ok(egresos);
+    }
+
     private bool TryObtenerEmpresaId(out int empresaId, out IActionResult? errorResult)
     {
         errorResult = null;

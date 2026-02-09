@@ -4,7 +4,7 @@ namespace Natural.Data.Domain.Gestion;
 
 public partial class EgresosEmpresa
 {
-    public long EgresoId { get; set; }
+    public int EgresoId { get; set; }
 
     public DateTime FechaRegistro { get; set; }
 
@@ -19,4 +19,5 @@ public partial class EgresosEmpresa
     public int? PersonaId { get; set; }
 
     public virtual Persona? Persona { get; set; }
+    public bool SeDescuenta { get; set; }
 }

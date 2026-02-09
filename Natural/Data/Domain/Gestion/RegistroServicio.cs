@@ -23,4 +23,5 @@ public partial class RegistroServicio
     public char? FormaPago { get; set; }
     public DateTime? FechaLiquidado { get; set; }
 
+    public string? IdLiquidacion { get; set; }
 }

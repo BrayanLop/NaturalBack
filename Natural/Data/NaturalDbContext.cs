@@ -18,6 +18,7 @@ public partial class NaturalDbContext : DbContext
     {
     }
 
+    public virtual DbSet<LiquidacionEgreso> LiquidacionEgresos { get; set; }
     public virtual DbSet<EgresosEmpresa> EgresosEmpresa { get; set; }
     public virtual DbSet<IngresosEmpresa> IngresosEmpresas { get; set; }
     public virtual DbSet<ConfiguracionGeneral> ConfiguracionGeneral { get; set; }
@@ -65,6 +66,24 @@ public partial class NaturalDbContext : DbContext
                   .HasConstraintName("ConfiguracionGeneral_EmpresaId_fkey");
         });
 
+        modelBuilder.Entity<LiquidacionEgreso>(entity =>
+        {
+            entity.HasKey(e => e.IdLiquidacion);
+
+            entity.Property(e => e.IdLiquidacion)
+                  .HasMaxLength(36);
+
+            entity.HasOne(e => e.Empresa)
+                  .WithMany() 
+                  .HasForeignKey(e => e.EmpresaId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.EgresoEmpresa)
+                  .WithMany() 
+                  .HasForeignKey(e => e.IdEgreso)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+        
         modelBuilder.Entity<EgresosEmpresa>(entity =>
         {
             entity.HasKey(e => e.EgresoId).HasName("EgresosEmpresa_pkey");

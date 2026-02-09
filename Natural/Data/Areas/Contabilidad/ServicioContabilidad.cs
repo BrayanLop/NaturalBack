@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Natural.Common;
 using Natural.Data.Domain;
 using Natural.Data.Domain.Configuracion;
@@ -175,7 +176,7 @@ namespace Natural.Data.Areas.Contabilidad
             }
         }
 
-        public async Task LiquidarServiciosAsync(int empresaId, int personaId)
+        public async Task LiquidarServiciosAsync(int empresaId, int personaId, string? egresosId)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -184,6 +185,23 @@ namespace Natural.Data.Areas.Contabilidad
                 var configGeneral = await ObtenerConfiguracionGeneralRequeridaAsync(empresaId);
                 var fechaLimiteUtc = CalcularFechaLimiteUtc(configGeneral);
                 var fechaHoyUtc = CalcularFechaFinUtc();
+
+                var listaEgresos = new List<EgresoEmpresaViewModel>();
+
+                if (!egresosId.IsNullOrEmpty())
+                {
+                    var egresos = await ObtenerEgresosPorPersonaAsync(empresaId, personaId);
+                    var ids = egresosId?
+                            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                            .Select(x => int.Parse(x))
+                            .ToList();
+
+                    foreach (var id in ids)
+                    {
+                        var egresosFiltrados = egresos.FindAll(e => e.EgresoId == id);
+                        listaEgresos.AddRange(egresosFiltrados);
+                    }
+                }
 
                 var registros = await _context.RegistroServicio
                     .Where(r =>
@@ -208,6 +226,7 @@ namespace Natural.Data.Areas.Contabilidad
                     .ToListAsync());
 
                 var ingresos = new List<IngresosEmpresa>();
+                var idLiquidacion = Guid.NewGuid().ToString();
 
                 foreach (var registro in registros)
                 {
@@ -230,6 +249,24 @@ namespace Natural.Data.Areas.Contabilidad
 
                     registro.Liquidado = true;
                     registro.FechaLiquidado = DateTime.UtcNow;
+                    registro.IdLiquidacion = idLiquidacion;
+                }
+
+                if (egresosId.IsNullOrEmpty())
+                {
+                    var liquidacionEgreso = new List<LiquidacionEgreso>();
+
+                    foreach (var item in listaEgresos)
+                    {
+                       liquidacionEgreso.Add(new LiquidacionEgreso
+                       {
+                           EmpresaId = empresaId,
+                           IdLiquidacion = idLiquidacion,
+                           IdEgreso = item.EgresoId
+                       });
+                    }
+
+                    await _context.LiquidacionEgresos.AddRangeAsync(liquidacionEgreso);
                 }
 
                 await _context.IngresosEmpresas.AddRangeAsync(ingresos);
@@ -274,6 +311,11 @@ namespace Natural.Data.Areas.Contabilidad
                     .Where(r => r.Persona != null && r.Servicio != null && r.FechaLiquidado.HasValue)
                     .ToListAsync();
 
+                var idLiquidacion = registros.FirstOrDefault()?.IdLiquidacion;
+                var idEgresosPorLiquidacion = _context.LiquidacionEgresos.
+                    FirstOrDefault(q => q.IdLiquidacion == idLiquidacion)?.IdEgreso;
+                var detalleEgreso = _context.EgresosEmpresa.FirstOrDefault(q => q.EgresoId == idEgresosPorLiquidacion);
+
                 return registros
                     .GroupBy(r =>
                     {
@@ -296,6 +338,8 @@ namespace Natural.Data.Areas.Contabilidad
                             var precio = r.Servicio?.Precio ?? 0m;
                             return CalcularMontoPorcentaje(precio, porcentaje);
                         });
+
+                        total = total - (detalleEgreso?.ValorEgreso ?? 0m);
 
                         return new PagoLiquidadoViewModel
                         {
@@ -511,7 +555,8 @@ namespace Natural.Data.Areas.Contabilidad
                 PersonaId = egresoEmpresa.PersonaId,
                 ValorEgreso = egresoEmpresa.ValorEgreso,
                 Motivo = egresoEmpresa.Motivo,
-                FechaRegistro = fechaRegistroUtc
+                FechaRegistro = fechaRegistroUtc,
+                SeDescuenta = egresoEmpresa.SeDescuenta
             };
 
             await _context.EgresosEmpresa.AddAsync(egreso);
@@ -541,6 +586,32 @@ namespace Natural.Data.Areas.Contabilidad
                 .ThenByDescending(e => e.EgresoId)
                 .Select(e => new EgresoEmpresaViewModel
                 {
+                    EmpresaId = e.EmpresaId ?? empresaId,
+                    PersonaId = e.PersonaId ?? 0,
+                    Motivo = e.Motivo ?? string.Empty,
+                    NombrePersona = e.Persona != null
+                        ? ObtenerNombreCompleto(e.Persona.Nombre, e.Persona.Apellido)
+                        : string.Empty,
+                    ValorEgreso = e.ValorEgreso ?? 0m,
+                    FechaRegistro = DateOnly.FromDateTime(TimeZoneHelper.ConvertUtcToColombia(e.FechaRegistro))
+                })
+                .ToListAsync();
+        }
+
+        public async Task<List<EgresoEmpresaViewModel>> ObtenerEgresosPorPersonaAsync(int empresaId, int personaId)
+        {
+            return await _context.EgresosEmpresa
+                .AsNoTracking()
+                .Include(e => e.Persona)
+                .Where(e =>
+                    e.EmpresaId == empresaId &&
+                    e.PersonaId == personaId &&
+                    e.SeDescuenta)
+                .OrderByDescending(e => e.FechaRegistro)
+                .ThenByDescending(e => e.EgresoId)
+                .Select(e => new EgresoEmpresaViewModel
+                {
+                    EgresoId = e.EgresoId,
                     EmpresaId = e.EmpresaId ?? empresaId,
                     PersonaId = e.PersonaId ?? 0,
                     Motivo = e.Motivo ?? string.Empty,
@@ -606,6 +677,13 @@ namespace Natural.Data.Areas.Contabilidad
             };
         }
 
+        private async Task<decimal> ObtenerValorEgresoAsync(int egresoId)
+        {
+            var egreso = await _context.EgresosEmpresa
+                .FirstOrDefaultAsync(c => c.EgresoId == egresoId);
+
+            return egreso?.ValorEgreso ?? 0;
+        }
 
     }
 }

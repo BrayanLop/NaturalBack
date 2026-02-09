@@ -37,14 +37,14 @@ namespace Natural.Controllers.Areas.Contabilidad
         }
 
         [HttpPost("LiquidarPersona")]
-        public async Task<IActionResult> LiquidarPersona([FromQuery] int personaId)
+        public async Task<IActionResult> LiquidarPersona([FromQuery] int personaId, [FromQuery] string egresosId)
         {
             if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
                 return errorResult!;
 
             try
             {
-                await _servicioContabilidad.LiquidarServiciosAsync(empresaId, personaId);
+                await _servicioContabilidad.LiquidarServiciosAsync(empresaId, personaId, egresosId);
                 return Ok();
             }
             catch (Exception ex)
