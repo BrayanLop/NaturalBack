@@ -129,6 +129,33 @@ public class RegistroServicioController : ControllerBase
         }
     }
 
+    [HttpPatch("ActualizarFormaPago/{registroServicioId:int}")]
+    public async Task<IActionResult> ActualizarFormaPago(int registroServicioId, [FromQuery] char? formaPago)
+    {
+        try
+        {
+            if (!formaPago.HasValue)
+                return BadRequest("Debe proporcionar la forma de pago.");
+
+            if (!TryGetHeaderInt("empresaId", out var empresaId, out var errorResult))
+            {
+                return errorResult!;
+            }
+
+            var actualizado = await _servicioGestion.ActualizarFormaPagoAsync(registroServicioId, empresaId, formaPago.Value);
+            if (!actualizado)
+                return NotFound("No se pudo actualizar el registro especificado.");
+
+            return Ok("Forma de pago actualizada correctamente.");
+        }
+        catch (Exception)
+        {
+            return Problem(
+                detail: "Ocurrió un error inesperado al actualizar el registro.",
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
     private bool TryGetHeaderInt(string headerName, out int value, out IActionResult? errorResult)
     {
         var headerValue = Request.Headers[headerName].FirstOrDefault();

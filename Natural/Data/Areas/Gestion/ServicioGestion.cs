@@ -188,6 +188,27 @@ namespace Natural.Data.Areas.Gestion
             return true;
         }
 
+        public async Task<bool> ActualizarFormaPagoAsync(int registroServicioId, int empresaId, char? formaPago)
+        {
+            var registro = await _context.RegistroServicio
+                .FirstOrDefaultAsync(r => r.Id == registroServicioId && r.EmpresaId == empresaId);
+
+            if (registro is null)
+            {
+                return false;
+            }
+
+            if (registro.FormaPago == formaPago)
+            {
+                return true;
+            }
+
+            registro.FormaPago = formaPago;
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
         private static (DateTime InicioDia, DateTime FinDia) ObtenerRangoUtcActual()
         {
             var inicioDia = DateTime.UtcNow.Date;
