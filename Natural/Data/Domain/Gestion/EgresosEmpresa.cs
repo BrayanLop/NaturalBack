@@ -20,4 +20,5 @@ public partial class EgresosEmpresa
 
     public virtual Persona? Persona { get; set; }
     public bool SeDescuenta { get; set; }
+    public bool Liquidado { get; set; }
 }

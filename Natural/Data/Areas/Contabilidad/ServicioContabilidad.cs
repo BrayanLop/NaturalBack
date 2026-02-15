@@ -54,42 +54,52 @@ namespace Natural.Data.Areas.Contabilidad
                     .Where(s => servicioIds.Contains(s.Id))
                     .ToListAsync());
 
+                // ✅ Obtener egresos pendientes por persona (que no han sido liquidados)
+                var personasIds = registros.Select(r => r.PersonaId).Distinct().ToList();
+                var egresosPorPersona = await _context.EgresosEmpresa
+                .Where(e => e.EmpresaId == empresaId && personasIds.Contains(e.PersonaId!.Value) && e.SeDescuenta && !e.Liquidado)
+                .GroupBy(e => e.PersonaId!.Value)
+                .Select(g => new { PersonaId = g.Key, TotalEgresos = g.Sum(e => e.ValorEgreso ?? 0m) })
+                .ToDictionaryAsync(x => x.PersonaId, x => x.TotalEgresos);
+
                 return registros
-                    .Where(r => r.Persona != null)
-                    .GroupBy(r => new { r.PersonaId, r.Persona!.Nombre, r.Persona.Apellido })
-                    .Select(grupoPersona =>
-                    {
-                        var detallesServicio = grupoPersona
-                            .GroupBy(r => r.ServicioId)
-                            .Select(grupoServicio =>
+                .Where(r => r.Persona != null)
+                .GroupBy(r => new { r.PersonaId, r.Persona!.Nombre, r.Persona.Apellido })
+                .Select(grupoPersona =>
+                {
+                     var detallesServicio = grupoPersona
+                     .GroupBy(r => r.ServicioId)
+                     .Select(grupoServicio =>
+                     {
+                            serviciosPorId.TryGetValue(grupoServicio.Key, out var servicio);
+                            return new ServicioDetalleViewModel
                             {
-                                serviciosPorId.TryGetValue(grupoServicio.Key, out var servicio);
-                                return new ServicioDetalleViewModel
-                                {
-                                    Nombre = servicio?.Nombre ?? "Desconocido",
-                                    Cantidad = grupoServicio.Count()
-                                };
-                            })
-                            .ToList();
+                                Nombre = servicio?.Nombre ?? "Desconocido",
+                                Cantidad = grupoServicio.Count()
+                            };
+                     }).ToList();
 
-                        var totalPagado = grupoPersona
-                            .Where(r => r.Confirmado)
+                     var totalPagado = grupoPersona
+                          .Where(r => r.Confirmado)
                             .Sum(r => CalcularPagoTrabajadorPorServicio(r.ServicioId, configuracionesPorServicio, serviciosPorId));
 
-                        var totalSinConfirmar = grupoPersona
-                            .Where(r => !r.Confirmado)
-                            .Sum(r => CalcularPagoTrabajadorPorServicio(r.ServicioId, configuracionesPorServicio, serviciosPorId));
+                     var totalSinConfirmar = grupoPersona
+                         .Where(r => !r.Confirmado)
+                           .Sum(r => CalcularPagoTrabajadorPorServicio(r.ServicioId, configuracionesPorServicio, serviciosPorId));
 
-                        return new PagoPersonaViewModel
-                        {
-                            PersonaId = grupoPersona.Key.PersonaId,
-                            NombrePersona = ObtenerNombreCompleto(grupoPersona.Key.Nombre, grupoPersona.Key.Apellido),
-                            TotalPagado = totalPagado,
-                            TotalSinConfirmar = totalSinConfirmar,
-                            Servicios = detallesServicio
-                        };
-                    })
-                    .ToList();
+                     // ✅ Restar egresos pendientes del total pagado
+                     egresosPorPersona.TryGetValue(grupoPersona.Key.PersonaId, out var egresosPersona);
+                     var totalPagadoConDescuentos = totalPagado - egresosPersona;
+
+                     return new PagoPersonaViewModel
+                     {
+                         PersonaId = grupoPersona.Key.PersonaId,
+                         NombrePersona = ObtenerNombreCompleto(grupoPersona.Key.Nombre, grupoPersona.Key.Apellido),
+                         TotalPagado = totalPagadoConDescuentos,
+                         TotalSinConfirmar = totalSinConfirmar,
+                         Servicios = detallesServicio
+                     };
+                 }).ToList();
             }
             catch (Exception)
             {
@@ -203,6 +213,8 @@ namespace Natural.Data.Areas.Contabilidad
                     }
                 }
 
+                var valorTotalADescontar = listaEgresos.Sum(e => e.ValorEgreso);
+
                 var registros = await _context.RegistroServicio
                     .Where(r =>
                         r.EmpresaId == empresaId &&
@@ -243,7 +255,7 @@ namespace Natural.Data.Areas.Contabilidad
                         {
                             EmpresaId = empresaId,
                             FechaIngreso = DateOnly.FromDateTime(TimeZoneHelper.ConvertUtcToColombia(DateTime.UtcNow)),
-                            ValorIngreso = valorIngreso
+                            ValorIngreso = valorIngreso + valorTotalADescontar
                         });
                     }
 
@@ -252,21 +264,44 @@ namespace Natural.Data.Areas.Contabilidad
                     registro.IdLiquidacion = idLiquidacion;
                 }
 
-                if (egresosId.IsNullOrEmpty())
+                // ✅ PROCESAR LIQUIDACIÓN DE EGRESOS (solo si hay egresos)
+                if (listaEgresos.Any())
                 {
-                    var liquidacionEgreso = new List<LiquidacionEgreso>();
+                    var idsEgresosALiquidar = listaEgresos
+                        .Select(le => le.EgresoId)
+                        .Distinct()
+                        .ToList();
 
-                    foreach (var item in listaEgresos)
+                    var egresosYaLiquidados = await _context.LiquidacionEgresos
+                        .Where(le => idsEgresosALiquidar.Contains(le.IdEgreso))
+                        .Select(le => le.IdEgreso)
+                        .Distinct()
+                        .ToListAsync();
+
+                    var egresosPendientes = idsEgresosALiquidar
+                        .Except(egresosYaLiquidados)
+                        .ToList();
+
+                    if (egresosPendientes.Any())
                     {
-                       liquidacionEgreso.Add(new LiquidacionEgreso
-                       {
-                           EmpresaId = empresaId,
-                           IdLiquidacion = idLiquidacion,
-                           IdEgreso = item.EgresoId
-                       });
-                    }
+                        var egresosActualizar = await _context.EgresosEmpresa
+                            .Where(e => egresosPendientes.Contains(e.EgresoId))
+                            .ToListAsync();
 
-                    await _context.LiquidacionEgresos.AddRangeAsync(liquidacionEgreso);
+                        foreach (var egreso in egresosActualizar)
+                        {
+                            egreso.Liquidado = true;
+                        }
+
+                        var liquidacionEgreso = egresosPendientes.Select(egresoId => new LiquidacionEgreso
+                        {
+                            EmpresaId = empresaId,
+                            IdLiquidacion = idLiquidacion,
+                            IdEgreso = egresoId
+                        }).ToList();
+
+                        await _context.LiquidacionEgresos.AddRangeAsync(liquidacionEgreso);
+                    }
                 }
 
                 await _context.IngresosEmpresas.AddRangeAsync(ingresos);
@@ -311,10 +346,26 @@ namespace Natural.Data.Areas.Contabilidad
                     .Where(r => r.Persona != null && r.Servicio != null && r.FechaLiquidado.HasValue)
                     .ToListAsync();
 
-                var idLiquidacion = registros.FirstOrDefault()?.IdLiquidacion;
-                var idEgresosPorLiquidacion = _context.LiquidacionEgresos.
-                    FirstOrDefault(q => q.IdLiquidacion == idLiquidacion)?.IdEgreso;
-                var detalleEgreso = _context.EgresosEmpresa.FirstOrDefault(q => q.EgresoId == idEgresosPorLiquidacion);
+                // ✅ Obtener todos los IDs de liquidación únicos
+                var idsLiquidacion = registros
+                    .Where(r => !string.IsNullOrEmpty(r.IdLiquidacion))
+                    .Select(r => r.IdLiquidacion!)
+                    .Distinct()
+                    .ToList();
+
+                // ✅ Obtener egresos relacionados con estas liquidaciones
+                var egresosLiquidados = await _context.LiquidacionEgresos
+                    .Where(le => idsLiquidacion.Contains(le.IdLiquidacion))
+                    .Include(le => le.EgresoEmpresa)
+                    .ToListAsync();
+
+                // ✅ Crear diccionario: IdLiquidacion -> TotalEgresos
+                var egresosPorLiquidacion = egresosLiquidados
+                    .GroupBy(le => le.IdLiquidacion)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Sum(le => le.EgresoEmpresa?.ValorEgreso ?? 0m)
+                    );
 
                 return registros
                     .GroupBy(r =>
@@ -325,7 +376,8 @@ namespace Natural.Data.Areas.Contabilidad
                             r.PersonaId,
                             Nombre = r.Persona!.Nombre,
                             Apellido = r.Persona.Apellido,
-                            Fecha = fechaColombia
+                            Fecha = fechaColombia,
+                            IdLiquidacion = r.IdLiquidacion
                         };
                     })
                     .Select(g =>
@@ -339,7 +391,12 @@ namespace Natural.Data.Areas.Contabilidad
                             return CalcularMontoPorcentaje(precio, porcentaje);
                         });
 
-                        total = total - (detalleEgreso?.ValorEgreso ?? 0m);
+                        // ✅ Restar egresos relacionados con esta liquidación
+                        if (!string.IsNullOrEmpty(g.Key.IdLiquidacion)
+                            && egresosPorLiquidacion.TryGetValue(g.Key.IdLiquidacion, out var egresosTotal))
+                        {
+                            total -= egresosTotal;
+                        }
 
                         return new PagoLiquidadoViewModel
                         {
@@ -350,80 +407,6 @@ namespace Natural.Data.Areas.Contabilidad
                         };
                     })
                     .OrderByDescending(x => x.FechaLiquidacion)
-                    .ToList();
-            }
-            catch
-            {
-                throw;
-            }
-        }
-
-        public async Task<List<HistorialIngresoViewModel>> ObtenerHistorialIngresosAsync(int empresaId, DateTime fechaDesde, DateTime fechaHasta, int? personaId = null)
-        {
-            try
-            {
-                var (inicioUtc, finUtc) = ConstruirRangoUtc(fechaDesde, fechaHasta);
-
-                var query = _context.RegistroServicio
-                    .Where(r =>
-                        r.EmpresaId == empresaId &&
-                        r.FechaServicio != null &&
-                        r.FechaServicio >= inicioUtc &&
-                        r.FechaServicio < finUtc)
-                    .Include(r => r.Persona)
-                    .Include(r => r.Servicio)
-                    .AsQueryable();
-
-                if (personaId.HasValue)
-                {
-                    query = query.Where(r => r.PersonaId == personaId.Value);
-                }
-
-                var configuraciones = CrearDiccionarioConfiguraciones(await _context.ConfiguracionServicio
-                    .Where(c => c.EmpresaId == empresaId)
-                    .ToListAsync());
-
-                var registros = await query
-                    .Where(r => r.Persona != null && r.Servicio != null && r.FechaServicio.HasValue)
-                    .ToListAsync();
-
-                return registros
-                    .GroupBy(r =>
-                    {
-                        var fechaColombia = TimeZoneHelper.ConvertUtcToColombia(r.FechaServicio!.Value).Date;
-                        return new
-                        {
-                            r.PersonaId,
-                            r.Persona!.Nombre,
-                            r.Persona.Apellido,
-                            Fecha = fechaColombia
-                        };
-                    })
-                    .Select(g =>
-                    {
-                        var totalEstimado = g.Sum(registro =>
-                        {
-                            if (!configuraciones.TryGetValue(registro.ServicioId, out var configServicio))
-                            {
-                                return 0m;
-                            }
-
-                            var precio = registro.Servicio?.Precio ?? 0m;
-                            var trabajador = CalcularMontoPorcentaje(precio, configServicio.PorcentajeTrabajador);
-                            var empresa = CalcularMontoPorcentaje(precio, configServicio.PorcentajeEmpresa);
-                            return trabajador + empresa;
-                        });
-
-                        return new HistorialIngresoViewModel
-                        {
-                            PersonaId = g.Key.PersonaId,
-                            NombrePersona = ObtenerNombreCompleto(g.Key.Nombre, g.Key.Apellido),
-                            FechaIngreso = g.Key.Fecha,
-                            TotalServicios = g.Count(),
-                            TotalEstimado = totalEstimado
-                        };
-                    })
-                    .OrderByDescending(x => x.FechaIngreso)
                     .ToList();
             }
             catch
@@ -606,7 +589,8 @@ namespace Natural.Data.Areas.Contabilidad
                 .Where(e =>
                     e.EmpresaId == empresaId &&
                     e.PersonaId == personaId &&
-                    e.SeDescuenta)
+                    e.SeDescuenta &&
+                    !e.Liquidado)
                 .OrderByDescending(e => e.FechaRegistro)
                 .ThenByDescending(e => e.EgresoId)
                 .Select(e => new EgresoEmpresaViewModel
@@ -655,7 +639,7 @@ namespace Natural.Data.Areas.Contabilidad
             var query = _context.RegistroServicio
                 .Where(r => r.EmpresaId == empresaId && r.FechaServicio >= inicioUtc && r.FechaServicio < finUtc);
 
-            if (!string.IsNullOrWhiteSpace(formaPago) && formaPago.Length ==1)
+            if (!string.IsNullOrWhiteSpace(formaPago) && formaPago.Length == 1)
             {
                 char formaPagoChar = formaPago[0];
                 query = query.Where(r => r.FormaPago == formaPagoChar);
@@ -664,9 +648,9 @@ namespace Natural.Data.Areas.Contabilidad
             var registros = await query.Include(r => r.Servicio).ToListAsync();
 
             var cantidadTransferencia = registros.Count(r => r.FormaPago == 'T');
-            var totalTransferencia = registros.Where(r => r.FormaPago == 'T').Sum(r => r.Servicio?.Precio ??0m);
+            var totalTransferencia = registros.Where(r => r.FormaPago == 'T').Sum(r => r.Servicio?.Precio ?? 0m);
             var cantidadEfectivo = registros.Count(r => r.FormaPago == 'E');
-            var totalEfectivo = registros.Where(r => r.FormaPago == 'E').Sum(r => r.Servicio?.Precio ??0m);
+            var totalEfectivo = registros.Where(r => r.FormaPago == 'E').Sum(r => r.Servicio?.Precio ?? 0m);
 
             return new ConsolidadoFormaPagoViewModel
             {

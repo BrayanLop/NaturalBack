@@ -68,20 +68,40 @@ public partial class NaturalDbContext : DbContext
 
         modelBuilder.Entity<LiquidacionEgreso>(entity =>
         {
-            entity.HasKey(e => e.IdLiquidacion);
+            entity.ToTable("LiquidacionEgreso");
+
+            // ✅ Clave primaria simple
+            entity.HasKey(e => e.IdLiquidacionEgreso);
+
+            entity.Property(e => e.IdLiquidacionEgreso)
+                  .ValueGeneratedOnAdd()
+               .UseIdentityColumn();
 
             entity.Property(e => e.IdLiquidacion)
-                  .HasMaxLength(36);
+            .HasMaxLength(36)
+                  .IsRequired();
 
-            entity.HasOne(e => e.Empresa)
-                  .WithMany() 
+            entity.Property(e => e.IdEgreso)
+                  .IsRequired();
+
+            entity.Property(e => e.EmpresaId)
+             .IsRequired();
+
+            // ✅ Índice único compuesto para evitar duplicados
+            entity.HasIndex(e => new { e.IdLiquidacion, e.IdEgreso })
+              .IsUnique()
+                .HasDatabaseName("UX_LiquidacionEgreso_Liquidacion_Egreso");
+
+          entity.HasOne(e => e.Empresa)
+           .WithMany()
                   .HasForeignKey(e => e.EmpresaId)
                   .OnDelete(DeleteBehavior.Restrict);
 
-            entity.HasOne(e => e.EgresoEmpresa)
-                  .WithMany() 
-                  .HasForeignKey(e => e.IdEgreso)
-                  .OnDelete(DeleteBehavior.Restrict);
+          entity.HasOne(e => e.EgresoEmpresa)
+          .WithMany()
+              .HasForeignKey(e => e.IdEgreso)
+                  .OnDelete(DeleteBehavior.Restrict)
+    .HasConstraintName("LiquidacionEgreso_IdEgreso_fkey");
         });
         
         modelBuilder.Entity<EgresosEmpresa>(entity =>
