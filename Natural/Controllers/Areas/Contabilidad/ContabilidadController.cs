@@ -37,7 +37,7 @@ namespace Natural.Controllers.Areas.Contabilidad
         }
 
         [HttpPost("LiquidarPersona")]
-        public async Task<IActionResult> LiquidarPersona([FromQuery] int personaId, [FromQuery] string egresosId)
+        public async Task<IActionResult> LiquidarPersona([FromQuery] int personaId, [FromQuery] string? egresosId)
         {
             if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
                 return errorResult!;

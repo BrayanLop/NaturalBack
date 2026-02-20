@@ -54,52 +54,42 @@ namespace Natural.Data.Areas.Contabilidad
                     .Where(s => servicioIds.Contains(s.Id))
                     .ToListAsync());
 
-                // ✅ Obtener egresos pendientes por persona (que no han sido liquidados)
-                var personasIds = registros.Select(r => r.PersonaId).Distinct().ToList();
-                var egresosPorPersona = await _context.EgresosEmpresa
-                .Where(e => e.EmpresaId == empresaId && personasIds.Contains(e.PersonaId!.Value) && e.SeDescuenta && !e.Liquidado)
-                .GroupBy(e => e.PersonaId!.Value)
-                .Select(g => new { PersonaId = g.Key, TotalEgresos = g.Sum(e => e.ValorEgreso ?? 0m) })
-                .ToDictionaryAsync(x => x.PersonaId, x => x.TotalEgresos);
-
                 return registros
-                .Where(r => r.Persona != null)
-                .GroupBy(r => new { r.PersonaId, r.Persona!.Nombre, r.Persona.Apellido })
-                .Select(grupoPersona =>
-                {
-                     var detallesServicio = grupoPersona
-                     .GroupBy(r => r.ServicioId)
-                     .Select(grupoServicio =>
-                     {
-                            serviciosPorId.TryGetValue(grupoServicio.Key, out var servicio);
-                            return new ServicioDetalleViewModel
+                    .Where(r => r.Persona != null)
+                    .GroupBy(r => new { r.PersonaId, r.Persona!.Nombre, r.Persona.Apellido })
+                    .Select(grupoPersona =>
+                    {
+                        var detallesServicio = grupoPersona
+                            .GroupBy(r => r.ServicioId)
+                            .Select(grupoServicio =>
                             {
-                                Nombre = servicio?.Nombre ?? "Desconocido",
-                                Cantidad = grupoServicio.Count()
-                            };
-                     }).ToList();
+                                serviciosPorId.TryGetValue(grupoServicio.Key, out var servicio);
+                                return new ServicioDetalleViewModel
+                                {
+                                    Nombre = servicio?.Nombre ?? "Desconocido",
+                                    Cantidad = grupoServicio.Count()
+                                };
+                            })
+                            .ToList();
 
-                     var totalPagado = grupoPersona
-                          .Where(r => r.Confirmado)
+                        var totalPagado = grupoPersona
+                            .Where(r => r.Confirmado)
                             .Sum(r => CalcularPagoTrabajadorPorServicio(r.ServicioId, configuracionesPorServicio, serviciosPorId));
 
-                     var totalSinConfirmar = grupoPersona
-                         .Where(r => !r.Confirmado)
-                           .Sum(r => CalcularPagoTrabajadorPorServicio(r.ServicioId, configuracionesPorServicio, serviciosPorId));
+                        var totalSinConfirmar = grupoPersona
+                            .Where(r => !r.Confirmado)
+                            .Sum(r => CalcularPagoTrabajadorPorServicio(r.ServicioId, configuracionesPorServicio, serviciosPorId));
 
-                     // ✅ Restar egresos pendientes del total pagado
-                     egresosPorPersona.TryGetValue(grupoPersona.Key.PersonaId, out var egresosPersona);
-                     var totalPagadoConDescuentos = totalPagado - egresosPersona;
-
-                     return new PagoPersonaViewModel
-                     {
-                         PersonaId = grupoPersona.Key.PersonaId,
-                         NombrePersona = ObtenerNombreCompleto(grupoPersona.Key.Nombre, grupoPersona.Key.Apellido),
-                         TotalPagado = totalPagadoConDescuentos,
-                         TotalSinConfirmar = totalSinConfirmar,
-                         Servicios = detallesServicio
-                     };
-                 }).ToList();
+                        return new PagoPersonaViewModel
+                        {
+                            PersonaId = grupoPersona.Key.PersonaId,
+                            NombrePersona = ObtenerNombreCompleto(grupoPersona.Key.Nombre, grupoPersona.Key.Apellido),
+                            TotalPagado = totalPagado,
+                            TotalSinConfirmar = totalSinConfirmar,
+                            Servicios = detallesServicio
+                        };
+                    })
+                    .ToList();
             }
             catch (Exception)
             {
