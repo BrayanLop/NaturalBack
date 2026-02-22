@@ -245,7 +245,8 @@ namespace Natural.Data.Areas.Contabilidad
                         {
                             EmpresaId = empresaId,
                             FechaIngreso = DateOnly.FromDateTime(TimeZoneHelper.ConvertUtcToColombia(DateTime.UtcNow)),
-                            ValorIngreso = valorIngreso + valorTotalADescontar
+                            ValorIngreso = valorIngreso,
+                            ValorDescontadoEnIngreso = valorTotalADescontar
                         });
                     }
 
@@ -556,7 +557,8 @@ namespace Natural.Data.Areas.Contabilidad
                 .Where(e =>
                     e.EmpresaId == empresaId &&
                     e.FechaRegistro >= inicioUtc &&
-                    e.FechaRegistro < finUtcExclusivo)
+                    e.FechaRegistro < finUtcExclusivo &&
+                    !e.SeDescuenta)
                 .OrderByDescending(e => e.FechaRegistro)
                 .ThenByDescending(e => e.EgresoId)
                 .Select(e => new EgresoEmpresaViewModel
@@ -614,7 +616,7 @@ namespace Natural.Data.Areas.Contabilidad
             var inicioUtc = TimeZoneHelper.ConvertColombiaToUtc(fechaDesde.Date);
             var finUtcExclusivo = TimeZoneHelper.ConvertColombiaToUtc(fechaHasta.Date.AddDays(1));
             var totalEgresos = await _context.EgresosEmpresa
-                .Where(e => e.EmpresaId == empresaId && e.FechaRegistro >= inicioUtc && e.FechaRegistro < finUtcExclusivo)
+                .Where(e => e.EmpresaId == empresaId && e.FechaRegistro >= inicioUtc && e.FechaRegistro < finUtcExclusivo && !e.SeDescuenta)
                 .SumAsync(e => e.ValorEgreso ?? 0);
 
             return new ConsolidadoIngresosEgresosViewModel
