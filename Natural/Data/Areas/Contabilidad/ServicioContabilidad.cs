@@ -252,6 +252,8 @@ namespace Natural.Data.Areas.Contabilidad
                     registro.Liquidado = true;
                     registro.FechaLiquidado = DateTime.UtcNow;
                     registro.IdLiquidacion = idLiquidacion;
+
+                    valorTotalADescontar = 0;
                 }
 
                 // ✅ PROCESAR LIQUIDACIÓN DE EGRESOS (solo si hay egresos)
