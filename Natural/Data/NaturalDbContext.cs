@@ -31,6 +31,7 @@ public partial class NaturalDbContext : DbContext
     public virtual DbSet<Servicio> Servicio { get; set; }
     public virtual DbSet<Usuario> Usuario { get; set; }
     public virtual DbSet<ConfiguracionServicio> ConfiguracionServicio { get; set; }
+    public virtual DbSet<EvidenciaRegistroServicio> EvidenciaRegistroServicios { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -207,6 +208,11 @@ public partial class NaturalDbContext : DbContext
 
             entity.HasOne(d => d.Servicio).WithMany(p => p.RegistroServicios)
                 .HasForeignKey(d => d.ServicioId);
+            
+            entity.HasMany(d => d.Evidencias)
+                .WithOne(e => e.RegistroServicio)
+                .HasForeignKey(e => e.RegistroServicioId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Rol>(entity =>
@@ -285,6 +291,29 @@ public partial class NaturalDbContext : DbContext
             entity.HasIndex(e => new { e.EmpresaId, e.ServicioId })
                 .IsUnique()
                 .HasDatabaseName("UX_ConfiguracionServicio_Empresa_Servicio");
+        });
+
+        modelBuilder.Entity<EvidenciaRegistroServicio>(entity =>
+        {
+            entity.ToTable("EvidenciaRegistroServicio");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.UrlEvidencia)
+                .HasMaxLength(500)
+                .IsRequired();
+
+            entity.Property(e => e.NombreArchivo)
+                .HasMaxLength(255);
+
+            entity.Property(e => e.FechaSubida)
+                .HasColumnType("timestamp with time zone")
+                .IsRequired();
+
+            entity.Property(e => e.EmpresaId);
+
+            entity.Property(e => e.RegistroServicioId)
+                .IsRequired();
         });
 
         OnModelCreatingPartial(modelBuilder);

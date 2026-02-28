@@ -30,14 +30,18 @@ public class RegistroServicioController : ControllerBase
 
         registros.ForEach(item => item.EmpresaId = empresaId);
 
-        var resultado = await _servicioGestion.GuardarRegistrosServicioAsync(registros);
+        var registrosIds = await _servicioGestion.GuardarRegistrosServicioAsync(registros);
 
-        if (!resultado)
+        if (registrosIds == null || registrosIds.Count == 0)
         {
             return StatusCode(500, "Hubo un problema al guardar los registros.");
         }
 
-        return Ok("Registros guardados correctamente.");
+        return Ok(new
+        {
+            mensaje = "Registros guardados correctamente",
+            registrosIds = registrosIds
+        });
     }
 
     [HttpGet("ObtenerRegistros")]

@@ -17,11 +17,18 @@ public partial class RegistroServicio
     public virtual Persona Persona { get; set; } = null!;
 
     public virtual Servicio Servicio { get; set; } = null!;
+    
     public DateTime? FechaServicio { get; set; }
+    
     public bool Liquidado { get; set; }
+    
     public bool Confirmado { get; set; }
+    
     public char? FormaPago { get; set; }
+    
     public DateTime? FechaLiquidado { get; set; }
 
     public string? IdLiquidacion { get; set; }
+
+    public virtual ICollection<EvidenciaRegistroServicio> Evidencias { get; set; } = new List<EvidenciaRegistroServicio>();
 }

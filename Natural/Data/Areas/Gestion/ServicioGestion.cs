@@ -14,7 +14,8 @@ namespace Natural.Data.Areas.Gestion
             _context = context;
         }
 
-        public async Task<bool> GuardarRegistrosServicioAsync(List<RegistroServicioViewModel> registros)
+        // Cambiar el tipo de retorno de bool a List<int>
+        public async Task<List<int>> GuardarRegistrosServicioAsync(List<RegistroServicioViewModel> registros)
         {
             try
             {
@@ -37,11 +38,12 @@ namespace Natural.Data.Areas.Gestion
                 await _context.RegistroServicio.AddRangeAsync(registrosEntidad);
                 await _context.SaveChangesAsync();
 
-                return true;
+                // Retornar los IDs de los registros guardados
+                return registrosEntidad.Select(r => r.Id).ToList();
             }
             catch (Exception)
             {
-                return false;
+                return new List<int>(); // Lista vacía en caso de error
             }
         }
 
@@ -79,6 +81,7 @@ namespace Natural.Data.Areas.Gestion
             return await query
                 .Include(r => r.Persona)
                 .Include(r => r.Servicio)
+                .Include(r => r.Evidencias) // Agregar esto
                 .Select(r => new RegistroServicioViewModel
                 {
                     Id = r.Id,
@@ -94,7 +97,21 @@ namespace Natural.Data.Areas.Gestion
                     FechaServicio = r.FechaServicio,
                     Liquidado = r.Liquidado,
                     Confirmado = r.Confirmado,
-                    FormaPago = r.FormaPago
+                    FormaPago = r.FormaPago,
+
+                    // Incluir evidencias directamente
+                    Evidencias = r.Evidencias
+                        .Where(e => e.EmpresaId == empresaId)
+                        .OrderByDescending(e => e.FechaSubida)
+                        .Select(e => new EvidenciaRegistroServicioViewModel
+                        {
+                            Id = e.Id,
+                            RegistroServicioId = e.RegistroServicioId,
+                            UrlEvidencia = e.UrlEvidencia,
+                            NombreArchivo = e.NombreArchivo,
+                            FechaSubida = e.FechaSubida
+                        })
+                        .ToList()
                 })
                 .ToListAsync();
         }

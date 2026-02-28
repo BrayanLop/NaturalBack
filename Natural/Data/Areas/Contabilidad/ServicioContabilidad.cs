@@ -247,6 +247,7 @@ namespace Natural.Data.Areas.Contabilidad
                             FechaIngreso = DateOnly.FromDateTime(TimeZoneHelper.ConvertUtcToColombia(DateTime.UtcNow)),
                             ValorIngreso = valorIngreso,
                             ValorDescontadoEnIngreso = valorTotalADescontar
+                            //TODO: Agregar referencia a liquidación para poder relacionar ingresos con egresos descontados
                         });
                     }
 

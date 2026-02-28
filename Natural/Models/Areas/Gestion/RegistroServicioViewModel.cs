@@ -14,5 +14,6 @@
         public bool Liquidado { get; set; }
         public bool Confirmado { get; set; }
         public char? FormaPago { get; set; }
+        public List<EvidenciaRegistroServicioViewModel> Evidencias { get; set; } = new List<EvidenciaRegistroServicioViewModel>();
     }
 }
