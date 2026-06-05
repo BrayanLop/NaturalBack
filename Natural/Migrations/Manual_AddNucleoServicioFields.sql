@@ -23,3 +23,7 @@ ALTER TABLE "RegistroServicio" ADD COLUMN IF NOT EXISTS "Observaciones" varchar(
 ALTER TABLE "RegistroServicio" ADD COLUMN IF NOT EXISTS "ValorServicio"        numeric(18,2);
 ALTER TABLE "RegistroServicio" ADD COLUMN IF NOT EXISTS "PorcentajeTrabajador" numeric(5,2);
 ALTER TABLE "RegistroServicio" ADD COLUMN IF NOT EXISTS "Comision"             numeric(18,2);
+
+-- Trazabilidad de propinas: estado entregada/pendiente (evita pagar doble)
+ALTER TABLE "RegistroServicio" ADD COLUMN IF NOT EXISTS "PropinaPagada"      boolean NOT NULL DEFAULT false;
+ALTER TABLE "RegistroServicio" ADD COLUMN IF NOT EXISTS "FechaPropinaPagada" timestamp with time zone;

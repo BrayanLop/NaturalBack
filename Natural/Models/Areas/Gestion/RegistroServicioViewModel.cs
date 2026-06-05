@@ -16,6 +16,8 @@
         public bool Rechazado { get; set; }
         public string? MotivoRechazo { get; set; }
         public decimal Propina { get; set; }
+        public bool PropinaPagada { get; set; }
+        public DateTime? FechaPropinaPagada { get; set; }
         public string? Observaciones { get; set; }
         public decimal? ValorServicio { get; set; }
         public decimal? PorcentajeTrabajador { get; set; }

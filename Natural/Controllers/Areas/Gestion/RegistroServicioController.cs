@@ -157,6 +157,30 @@ public class RegistroServicioController : ControllerBase
         }
     }
 
+    [HttpPatch("MarcarPropinaPagada/{registroServicioId:int}")]
+    public async Task<IActionResult> MarcarPropinaPagada(int registroServicioId, [FromQuery] bool? pagada)
+    {
+        try
+        {
+            if (!TryGetHeaderInt("empresaId", out var empresaId, out var errorResult))
+            {
+                return errorResult!;
+            }
+
+            var actualizado = await _servicioGestion.MarcarPropinaPagadaAsync(registroServicioId, empresaId, pagada ?? true);
+            if (!actualizado)
+                return NotFound("No se pudo actualizar la propina del registro especificado.");
+
+            return Ok("Estado de propina actualizado correctamente.");
+        }
+        catch (Exception)
+        {
+            return Problem(
+                detail: "Ocurrió un error inesperado al actualizar la propina.",
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
     [HttpPatch("ActualizarFormaPago/{registroServicioId:int}")]
     public async Task<IActionResult> ActualizarFormaPago(int registroServicioId, [FromQuery] char? formaPago)
     {

@@ -128,6 +128,8 @@ namespace Natural.Data.Areas.Gestion
                     Rechazado = r.Rechazado,
                     MotivoRechazo = r.MotivoRechazo,
                     Propina = r.Propina,
+                    PropinaPagada = r.PropinaPagada,
+                    FechaPropinaPagada = r.FechaPropinaPagada,
                     Observaciones = r.Observaciones,
                     ValorServicio = r.ValorServicio,
                     PorcentajeTrabajador = r.PorcentajeTrabajador,
@@ -190,6 +192,8 @@ namespace Natural.Data.Areas.Gestion
                     Rechazado = r.Rechazado,
                     MotivoRechazo = r.MotivoRechazo,
                     Propina = r.Propina,
+                    PropinaPagada = r.PropinaPagada,
+                    FechaPropinaPagada = r.FechaPropinaPagada,
                     Observaciones = r.Observaciones,
                     ValorServicio = r.ValorServicio,
                     PorcentajeTrabajador = r.PorcentajeTrabajador,
@@ -269,6 +273,23 @@ namespace Natural.Data.Areas.Gestion
             registro.Rechazado = true;
             registro.Confirmado = false;
             registro.MotivoRechazo = string.IsNullOrWhiteSpace(motivo) ? null : motivo.Trim();
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<bool> MarcarPropinaPagadaAsync(int registroServicioId, int empresaId, bool pagada)
+        {
+            var registro = await _context.RegistroServicio
+                .FirstOrDefaultAsync(r => r.Id == registroServicioId && r.EmpresaId == empresaId);
+
+            if (registro is null)
+            {
+                return false;
+            }
+
+            registro.PropinaPagada = pagada;
+            registro.FechaPropinaPagada = pagada ? DateTime.UtcNow : null;
             await _context.SaveChangesAsync();
 
             return true;

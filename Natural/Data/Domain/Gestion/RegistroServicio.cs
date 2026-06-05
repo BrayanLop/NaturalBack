@@ -33,6 +33,12 @@ public partial class RegistroServicio
     /// <summary>Propina recibida. Pertenece 100% al trabajador, no genera utilidad para la empresa.</summary>
     public decimal Propina { get; set; }
 
+    /// <summary>True si la propina ya fue entregada al trabajador (en mano o en liquidación). Evita pagarla doble.</summary>
+    public bool PropinaPagada { get; set; }
+
+    /// <summary>Fecha en que se marcó la propina como entregada.</summary>
+    public DateTime? FechaPropinaPagada { get; set; }
+
     /// <summary>Observaciones registradas por el trabajador al crear el servicio.</summary>
     public string? Observaciones { get; set; }
 

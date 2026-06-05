@@ -206,6 +206,7 @@ public partial class NaturalDbContext : DbContext
             entity.Property(e => e.MotivoRechazo).HasMaxLength(256);
             entity.Property(e => e.Observaciones).HasMaxLength(256);
             entity.Property(e => e.Rechazado).HasDefaultValue(false);
+            entity.Property(e => e.PropinaPagada).HasDefaultValue(false);
 
             entity.HasOne(d => d.Empresa).WithMany(p => p.RegistroServicios)
                 .HasForeignKey(d => d.EmpresaId)
