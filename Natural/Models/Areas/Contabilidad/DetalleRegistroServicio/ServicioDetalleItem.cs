@@ -5,4 +5,6 @@
     public DateTime Hora { get; set; }
     public bool Confirmado { get; set; }
     public decimal ValorTrabajador { get; set; }
+    public decimal Propina { get; set; }
+    public bool PropinaPagada { get; set; }
 }
