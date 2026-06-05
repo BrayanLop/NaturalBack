@@ -199,6 +199,14 @@ public partial class NaturalDbContext : DbContext
             entity.HasIndex(e => e.PersonaId, "IX_RegistroServicio_PersonaId");
             entity.HasIndex(e => e.ServicioId, "IX_RegistroServicio_ServicioId");
 
+            entity.Property(e => e.Propina).HasColumnType("numeric(18, 2)").HasDefaultValue(0m);
+            entity.Property(e => e.ValorServicio).HasColumnType("numeric(18, 2)");
+            entity.Property(e => e.Comision).HasColumnType("numeric(18, 2)");
+            entity.Property(e => e.PorcentajeTrabajador).HasColumnType("numeric(5, 2)");
+            entity.Property(e => e.MotivoRechazo).HasMaxLength(256);
+            entity.Property(e => e.Observaciones).HasMaxLength(256);
+            entity.Property(e => e.Rechazado).HasDefaultValue(false);
+
             entity.HasOne(d => d.Empresa).WithMany(p => p.RegistroServicios)
                 .HasForeignKey(d => d.EmpresaId)
                 .HasConstraintName("FK_RegistroServicio_Empresa");

@@ -133,6 +133,30 @@ public class RegistroServicioController : ControllerBase
         }
     }
 
+    [HttpPatch("Rechazar/{registroServicioId:int}")]
+    public async Task<IActionResult> Rechazar(int registroServicioId, [FromQuery] string? motivo)
+    {
+        try
+        {
+            if (!TryGetHeaderInt("empresaId", out var empresaId, out var errorResult))
+            {
+                return errorResult!;
+            }
+
+            var rechazado = await _servicioGestion.RechazarAsync(registroServicioId, empresaId, motivo);
+            if (!rechazado)
+                return NotFound("No se pudo rechazar el registro especificado (no existe o ya está liquidado).");
+
+            return Ok("Registro rechazado correctamente.");
+        }
+        catch (Exception)
+        {
+            return Problem(
+                detail: "Ocurrió un error inesperado al rechazar el registro.",
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
     [HttpPatch("ActualizarFormaPago/{registroServicioId:int}")]
     public async Task<IActionResult> ActualizarFormaPago(int registroServicioId, [FromQuery] char? formaPago)
     {
