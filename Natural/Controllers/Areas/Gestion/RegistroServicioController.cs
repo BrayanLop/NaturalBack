@@ -127,6 +127,43 @@ public class RegistroServicioController : ApiControllerBase
         return Ok("Estado de confirmación actualizado correctamente.");
     }
 
+    [HttpPatch("Rechazar/{registroServicioId:int}")]
+    [Authorize(Policy = Roles.PoliticaGestion)]
+    public async Task<IActionResult> Rechazar(int registroServicioId, [FromQuery] string? motivo)
+    {
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+            return errorResult!;
+
+        var rechazado = await _servicioGestion.RechazarAsync(registroServicioId, empresaId, motivo);
+        if (!rechazado)
+            return NotFound("No se pudo rechazar el registro especificado (no existe o ya está liquidado).");
+
+        return Ok("Registro rechazado correctamente.");
+    }
+
+    [HttpPatch("MarcarPropinaPagada/{registroServicioId:int}")]
+    [Authorize(Policy = Roles.PoliticaGestion)]
+    public async Task<IActionResult> MarcarPropinaPagada(int registroServicioId, [FromQuery] bool? pagada)
+    {
+        try
+        {
+            if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+                return errorResult!;
+
+            var actualizado = await _servicioGestion.MarcarPropinaPagadaAsync(registroServicioId, empresaId, pagada ?? true);
+            if (!actualizado)
+                return NotFound("No se pudo actualizar la propina del registro especificado.");
+
+            return Ok("Estado de propina actualizado correctamente.");
+        }
+        catch (Exception)
+        {
+            return Problem(
+                detail: "Ocurrió un error inesperado al actualizar la propina.",
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
     [HttpPatch("ActualizarFormaPago/{registroServicioId:int}")]
     public async Task<IActionResult> ActualizarFormaPago(int registroServicioId, [FromQuery] char? formaPago)
     {
