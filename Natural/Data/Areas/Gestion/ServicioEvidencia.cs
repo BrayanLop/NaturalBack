@@ -25,7 +25,7 @@ public class ServicioEvidencia
 
         if (!registroExiste)
         {
-            throw new Exception("El registro de servicio no existe o no pertenece a esta empresa");
+            throw new KeyNotFoundException("El registro de servicio no existe o no pertenece a esta empresa");
         }
 
         // Subir archivo a Supabase

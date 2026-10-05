@@ -1,6 +1,8 @@
 ﻿using System.Linq.Expressions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Natural.Common;
 using Natural.Data.Domain;
 using Natural.Data.Domain.Estructura;
 using Natural.Data.Domain.Sesion;
@@ -44,11 +46,13 @@ namespace Natural.Data.Areas.Estructura
 
         private readonly NaturalDbContext _context;
         private readonly IPasswordHasher<Usuario> _passwordHasher;
+        private readonly OpcionesSeguridad _opcionesSeguridad;
 
-        public ServicioEstructura(NaturalDbContext context, IPasswordHasher<Usuario> passwordHasher)
+        public ServicioEstructura(NaturalDbContext context, IPasswordHasher<Usuario> passwordHasher, IOptions<OpcionesSeguridad> opcionesSeguridad)
         {
             _context = context;
             _passwordHasher = passwordHasher;
+            _opcionesSeguridad = opcionesSeguridad.Value;
         }
 
         #region Servicio
@@ -255,7 +259,10 @@ namespace Natural.Data.Areas.Estructura
                 return false;
             }
 
-            usuario.ClaveHash = _passwordHasher.HashPassword(usuario, nuevaContrasena);
+            // Sin migración activa se guarda el formato antiguo (SHA-256), que es el que entienden las versiones anteriores del API.
+            usuario.ClaveHash = _opcionesSeguridad.MigrarHashContrasenas
+                ? _passwordHasher.HashPassword(usuario, nuevaContrasena)
+                : nuevaContrasena;
 
             await _context.SaveChangesAsync();
 

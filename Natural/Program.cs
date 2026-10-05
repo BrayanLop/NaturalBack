@@ -38,6 +38,7 @@ builder.Services.AddScoped<Supabase.Client>(_ => new Supabase.Client(supabaseUrl
     AutoConnectRealtime = false
 }));
 
+builder.Services.Configure<OpcionesSeguridad>(builder.Configuration.GetSection("Seguridad"));
 builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 builder.Services.AddScoped<SupabaseStorageService>();
 builder.Services.AddScoped<ServicioEstructura>();

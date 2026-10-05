@@ -2,6 +2,8 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Natural.Common;
 using Natural.Data.Domain;
 using Natural.Data.Domain.Sesion;
 
@@ -9,8 +11,8 @@ namespace Natural.Data.Areas.Sesion
 {
     /// <summary>
     /// El cliente envía la contraseña ya transformada a SHA-256 en base64 (44 caracteres).
-    /// En BD se guarda un hash PBKDF2 (ASP.NET Identity) de ese valor. Los registros antiguos,
-    /// que guardaban directamente el SHA-256, se migran al nuevo formato en el primer login exitoso.
+    /// Formatos en BD: el antiguo guarda ese SHA-256 tal cual; el nuevo, un hash PBKDF2 (ASP.NET Identity) de él.
+    /// Se aceptan ambos. Con Seguridad:MigrarHashContrasenas = true, el antiguo se convierte en el primer login exitoso.
     /// </summary>
     public class ServicioLogin
     {
@@ -18,11 +20,13 @@ namespace Natural.Data.Areas.Sesion
 
         private readonly NaturalDbContext _context;
         private readonly IPasswordHasher<Usuario> _passwordHasher;
+        private readonly OpcionesSeguridad _opciones;
 
-        public ServicioLogin(NaturalDbContext context, IPasswordHasher<Usuario> passwordHasher)
+        public ServicioLogin(NaturalDbContext context, IPasswordHasher<Usuario> passwordHasher, IOptions<OpcionesSeguridad> opciones)
         {
             _context = context;
             _passwordHasher = passwordHasher;
+            _opciones = opciones.Value;
         }
 
         public async Task<Usuario?> ObtenerUsuarioAsync(string nombreUsuario, string contrasena)
@@ -36,8 +40,12 @@ namespace Natural.Data.Areas.Sesion
                 if (!SonIguales(usuario.ClaveHash, contrasena))
                     return null;
 
-                usuario.ClaveHash = _passwordHasher.HashPassword(usuario, contrasena);
-                await _context.SaveChangesAsync();
+                if (_opciones.MigrarHashContrasenas)
+                {
+                    usuario.ClaveHash = _passwordHasher.HashPassword(usuario, contrasena);
+                    await _context.SaveChangesAsync();
+                }
+
                 return usuario;
             }
 
@@ -53,8 +61,6 @@ namespace Natural.Data.Areas.Sesion
 
             return usuario;
         }
-
-        public string GenerarHash(Usuario usuario, string contrasena) => _passwordHasher.HashPassword(usuario, contrasena);
 
         private static bool EsHashLegado(string claveHash) => claveHash.Length == LongitudHashLegado;
 

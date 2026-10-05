@@ -1,12 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Natural.Common;
 using Natural.Data.Areas.Gestion;
 using Natural.Models.Areas.Gestion;
 
-[Authorize]
-[ApiController]
 [Route("api/[controller]")]
-public class RegistroServicioController : ControllerBase
+public class RegistroServicioController : ApiControllerBase
 {
     private readonly ServicioGestion _servicioGestion;
 
@@ -19,53 +18,63 @@ public class RegistroServicioController : ControllerBase
     public async Task<IActionResult> GuardarRegistroServicios([FromBody] List<RegistroServicioViewModel> registros)
     {
         if (registros == null || registros.Count == 0)
-        {
             return BadRequest("Debe enviar al menos un registro.");
-        }
 
-        if (!TryGetHeaderInt("empresaId", out var empresaId, out var errorResult))
-        {
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
             return errorResult!;
+
+        // Un trabajador solo registra servicios propios y sin confirmar; la confirmación es del administrador.
+        if (!PuedeGestionar)
+        {
+            if (!TryObtenerPersonaId(out var personaId, out errorResult))
+                return errorResult!;
+
+            registros.ForEach(r =>
+            {
+                r.PersonaId = personaId;
+                r.Confirmado = false;
+            });
         }
 
-        registros.ForEach(item => item.EmpresaId = empresaId);
-
-        var registrosIds = await _servicioGestion.GuardarRegistrosServicioAsync(registros);
-
-        if (registrosIds == null || registrosIds.Count == 0)
+        try
         {
-            return StatusCode(500, "Hubo un problema al guardar los registros.");
+            var registrosIds = await _servicioGestion.GuardarRegistrosServicioAsync(empresaId, registros);
+            return Ok(new
+            {
+                mensaje = "Registros guardados correctamente",
+                registrosIds
+            });
         }
-
-        return Ok(new
+        catch (InvalidOperationException ex)
         {
-            mensaje = "Registros guardados correctamente",
-            registrosIds = registrosIds
-        });
+            return BadRequest(ex.Message);
+        }
     }
 
+    /// <remarks>
+    /// El administrador ve los registros de todas las personas; los demás roles solo los propios.
+    /// El parámetro personaId se conserva por compatibilidad con el front, pero ya no define permisos.
+    /// </remarks>
     [HttpGet("ObtenerRegistros")]
     public async Task<IActionResult> ObtenerRegistros([FromQuery] int? personaId, [FromQuery] DateTime? fechaInicio, [FromQuery] DateTime? fechaFin)
     {
-        if (!TryGetHeaderInt("empresaId", out var empresaId, out var errorResult))
-        {
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
             return errorResult!;
-        }
 
         if (fechaInicio.HasValue != fechaFin.HasValue)
-        {
             return BadRequest("Debe proporcionar ambos valores de fecha (inicio y fin).");
-        }
 
         if (fechaInicio.HasValue && fechaFin.HasValue && fechaInicio > fechaFin)
-        {
             return BadRequest("La fecha de inicio no puede ser mayor a la fecha de fin.");
-        }
 
-        var inicio = fechaInicio ?? DateTime.UtcNow.Date;
-        var fin = fechaFin ?? DateTime.UtcNow.Date;
+        if (!TryObtenerFiltroPersona(out var personaIdFiltro, out errorResult))
+            return errorResult!;
 
-        var registros = await _servicioGestion.ObtenerRegistrosFechaActualAsync(empresaId, personaId ?? 0, inicio, fin);
+        var (inicioUtc, finUtc) = fechaInicio.HasValue && fechaFin.HasValue
+            ? ServicioGestion.NormalizarRangoUtc(fechaInicio.Value, fechaFin.Value)
+            : TimeZoneHelper.RangoDiaActualUtc();
+
+        var registros = await _servicioGestion.ObtenerRegistrosFechaActualAsync(empresaId, personaIdFiltro, inicioUtc, finUtc);
 
         return Ok(registros);
     }
@@ -73,22 +82,16 @@ public class RegistroServicioController : ControllerBase
     [HttpGet("ObtenerRegistrosPersona")]
     public async Task<IActionResult> ObtenerRegistrosPersona()
     {
-        if (!TryGetHeaderInt("empresaId", out var empresaId, out var errorResult))
-        {
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
             return errorResult!;
-        }
 
-        if (!TryGetHeaderInt("personaId", out var personaId, out var personaError))
-        {
-            return personaError!;
-        }
+        if (!TryObtenerPersonaId(out var personaId, out errorResult))
+            return errorResult!;
 
         var registros = await _servicioGestion.ObtenerRegistrosFechaActualPersonaAsync(empresaId, personaId);
 
-        if (registros == null || registros.Count == 0)
-        {
+        if (registros.Count == 0)
             return NotFound("No se encontraron registros para esta persona.");
-        }
 
         return Ok(registros);
     }
@@ -96,80 +99,72 @@ public class RegistroServicioController : ControllerBase
     [HttpGet("ObtenerConsolidadoDia")]
     public async Task<IActionResult> ObtenerConsolidadoDia([FromQuery] int? personaId)
     {
-        if (!TryGetHeaderInt("empresaId", out var empresaId, out var errorResult))
-        {
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
             return errorResult!;
-        }
 
-        var consolidado = await _servicioGestion.ObtenerConsolidadoDiaAsync(empresaId, personaId ?? 0);
+        if (!TryObtenerFiltroPersona(out var personaIdFiltro, out errorResult))
+            return errorResult!;
+
+        var consolidado = await _servicioGestion.ObtenerConsolidadoDiaAsync(empresaId, personaIdFiltro);
 
         return Ok(consolidado);
     }
 
     [HttpPatch("ActualizarConfirmado/{registroServicioId:int}")]
+    [Authorize(Policy = Roles.PoliticaGestion)]
     public async Task<IActionResult> ActualizarConfirmado(int registroServicioId, [FromQuery] bool? confirmado)
     {
-        try
-        {
-            if (!confirmado.HasValue)
-                return BadRequest("Debe proporcionar el estado de confirmación.");
+        if (!confirmado.HasValue)
+            return BadRequest("Debe proporcionar el estado de confirmación.");
 
-            if (!TryGetHeaderInt("empresaId", out var empresaId, out var errorResult))
-            {
-                return errorResult!;
-            }
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+            return errorResult!;
 
-            var actualizado = await _servicioGestion.ActualizarConfirmadoAsync(registroServicioId, empresaId, confirmado.Value);
-            if (!actualizado)
-                return NotFound("No se pudo actualizar el registro especificado.");
+        var actualizado = await _servicioGestion.ActualizarConfirmadoAsync(registroServicioId, empresaId, confirmado.Value);
+        if (!actualizado)
+            return NotFound("No se pudo actualizar el registro especificado.");
 
-            return Ok("Estado de confirmación actualizado correctamente.");
-        }
-        catch (Exception)
-        {
-            return Problem(
-                detail: "Ocurrió un error inesperado al actualizar el registro.",
-                statusCode: StatusCodes.Status500InternalServerError);
-        }
+        return Ok("Estado de confirmación actualizado correctamente.");
     }
 
     [HttpPatch("ActualizarFormaPago/{registroServicioId:int}")]
     public async Task<IActionResult> ActualizarFormaPago(int registroServicioId, [FromQuery] char? formaPago)
     {
-        try
-        {
-            if (!formaPago.HasValue)
-                return BadRequest("Debe proporcionar la forma de pago.");
+        if (!formaPago.HasValue)
+            return BadRequest("Debe proporcionar la forma de pago.");
 
-            if (!TryGetHeaderInt("empresaId", out var empresaId, out var errorResult))
-            {
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+            return errorResult!;
+
+        int? personaIdFiltro = null;
+        if (!PuedeGestionar)
+        {
+            if (!TryObtenerPersonaId(out var personaId, out errorResult))
                 return errorResult!;
-            }
 
-            var actualizado = await _servicioGestion.ActualizarFormaPagoAsync(registroServicioId, empresaId, formaPago.Value);
-            if (!actualizado)
-                return NotFound("No se pudo actualizar el registro especificado.");
+            personaIdFiltro = personaId;
+        }
 
-            return Ok("Forma de pago actualizada correctamente.");
-        }
-        catch (Exception)
-        {
-            return Problem(
-                detail: "Ocurrió un error inesperado al actualizar el registro.",
-                statusCode: StatusCodes.Status500InternalServerError);
-        }
+        var actualizado = await _servicioGestion.ActualizarFormaPagoAsync(registroServicioId, empresaId, formaPago.Value, personaIdFiltro);
+        if (!actualizado)
+            return NotFound("No se pudo actualizar el registro especificado.");
+
+        return Ok("Forma de pago actualizada correctamente.");
     }
 
-    private bool TryGetHeaderInt(string headerName, out int value, out IActionResult? errorResult)
+    /// <summary>Administrador: sin filtro (null). Otros roles: solo su propia persona.</summary>
+    private bool TryObtenerFiltroPersona(out int? personaIdFiltro, out IActionResult? errorResult)
     {
-        var headerValue = Request.Headers[headerName].FirstOrDefault();
-        if (!int.TryParse(headerValue, out value))
-        {
-            errorResult = BadRequest($"Header '{headerName}' inválido.");
-            return false;
-        }
-
+        personaIdFiltro = null;
         errorResult = null;
+
+        if (EsAdministrador)
+            return true;
+
+        if (!TryObtenerPersonaId(out var personaId, out errorResult))
+            return false;
+
+        personaIdFiltro = personaId;
         return true;
     }
 }

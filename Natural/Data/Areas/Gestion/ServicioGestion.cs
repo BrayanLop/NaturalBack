@@ -2,6 +2,7 @@
 using Natural.Data.Domain.Gestion;
 using Natural.Models.Areas.Gestion;
 using Natural.Data.Domain;
+using Natural.Common;
 
 namespace Natural.Data.Areas.Gestion
 {
@@ -14,37 +15,43 @@ namespace Natural.Data.Areas.Gestion
             _context = context;
         }
 
-        // Cambiar el tipo de retorno de bool a List<int>
-        public async Task<List<int>> GuardarRegistrosServicioAsync(List<RegistroServicioViewModel> registros)
+        /// <summary>
+        /// Guarda los registros y devuelve sus ids. Lanza InvalidOperationException si alguna persona
+        /// o servicio no pertenece a la empresa.
+        /// </summary>
+        public async Task<List<int>> GuardarRegistrosServicioAsync(int empresaId, List<RegistroServicioViewModel> registros)
         {
-            try
-            {
-                var fechaActual = DateTime.UtcNow;
+            var personasIds = registros.Select(r => r.PersonaId).Distinct().ToList();
+            var serviciosIds = registros.Select(r => r.ServicioId).Distinct().ToList();
 
-                var registrosEntidad = registros
-                    .Select(r => new RegistroServicio
-                    {
-                        PersonaId = r.PersonaId,
-                        ServicioId = r.ServicioId,
-                        EmpresaId = r.EmpresaId,
-                        FechaServicio = r.FechaServicio ?? fechaActual,
-                        Liquidado = false,
-                        Confirmado = r.Confirmado,
-                        FormaPago = r.FormaPago
-                    })
-                    .OrderBy(r => r.FechaServicio)
-                    .ToList();
+            var personasValidas = await _context.Persona
+                .CountAsync(p => personasIds.Contains(p.Id) && p.EmpresaId == empresaId);
+            var serviciosValidos = await _context.Servicio
+                .CountAsync(s => serviciosIds.Contains(s.Id) && s.EmpresaId == empresaId);
 
-                await _context.RegistroServicio.AddRangeAsync(registrosEntidad);
-                await _context.SaveChangesAsync();
+            if (personasValidas != personasIds.Count || serviciosValidos != serviciosIds.Count)
+                throw new InvalidOperationException("Alguna persona o servicio no pertenece a la empresa.");
 
-                // Retornar los IDs de los registros guardados
-                return registrosEntidad.Select(r => r.Id).ToList();
-            }
-            catch (Exception)
-            {
-                return new List<int>(); // Lista vacía en caso de error
-            }
+            var fechaActual = DateTime.UtcNow;
+
+            var registrosEntidad = registros
+                .Select(r => new RegistroServicio
+                {
+                    PersonaId = r.PersonaId,
+                    ServicioId = r.ServicioId,
+                    EmpresaId = empresaId,
+                    FechaServicio = r.FechaServicio ?? fechaActual,
+                    Liquidado = false,
+                    Confirmado = r.Confirmado,
+                    FormaPago = r.FormaPago
+                })
+                .OrderBy(r => r.FechaServicio)
+                .ToList();
+
+            await _context.RegistroServicio.AddRangeAsync(registrosEntidad);
+            await _context.SaveChangesAsync();
+
+            return registrosEntidad.Select(r => r.Id).ToList();
         }
 
         public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosAsync(int empresaId)
@@ -67,15 +74,14 @@ namespace Natural.Data.Areas.Gestion
                 .ToListAsync();
         }
 
-        public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosFechaActualAsync(int empresaId, int personaId, DateTime fechaInicio, DateTime fechaFin)
+        /// <param name="personaIdFiltro">Null = todos los registros de la empresa (administrador).</param>
+        public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosFechaActualAsync(int empresaId, int? personaIdFiltro, DateTime inicioUtc, DateTime finUtc)
         {
-            var (inicioRango, finRango) = NormalizarRangoUtc(fechaInicio, fechaFin);
-            var query = ConstruirQueryPorRango(empresaId, inicioRango, finRango);
+            var query = ConstruirQueryPorRango(empresaId, inicioUtc, finUtc);
 
-            var esAdministrador = await PersonaEsAdministradorAsync(personaId);
-            if (!esAdministrador)
+            if (personaIdFiltro.HasValue)
             {
-                query = query.Where(r => r.PersonaId == personaId);
+                query = query.Where(r => r.PersonaId == personaIdFiltro.Value);
             }
 
             return await query
@@ -116,7 +122,7 @@ namespace Natural.Data.Areas.Gestion
                 .ToListAsync();
         }
 
-        private static (DateTime Inicio, DateTime Fin) NormalizarRangoUtc(DateTime fechaInicio, DateTime fechaFin)
+        public static (DateTime Inicio, DateTime Fin) NormalizarRangoUtc(DateTime fechaInicio, DateTime fechaFin)
         {
             var inicioUtc = fechaInicio.Kind == DateTimeKind.Utc ? fechaInicio : fechaInicio.ToUniversalTime();
             var finUtc = fechaFin.Kind == DateTimeKind.Utc ? fechaFin : fechaFin.ToUniversalTime();
@@ -136,7 +142,7 @@ namespace Natural.Data.Areas.Gestion
 
         public async Task<List<RegistroServicioViewModel>> ObtenerRegistrosFechaActualPersonaAsync(int empresaId, int personaId)
         {
-            var (inicioDia, finDia) = ObtenerRangoUtcActual();
+            var (inicioDia, finDia) = TimeZoneHelper.RangoDiaActualUtc();
 
             return await ConstruirQueryPorRango(empresaId, inicioDia, finDia)
                 .Where(r => r.PersonaId == personaId)
@@ -157,15 +163,15 @@ namespace Natural.Data.Areas.Gestion
                 .ToListAsync();
         }
 
-        public async Task<List<ConsolidadoDiaViewModel>> ObtenerConsolidadoDiaAsync(int empresaId, int personaId)
+        /// <param name="personaIdFiltro">Null = todas las personas de la empresa (administrador).</param>
+        public async Task<List<ConsolidadoDiaViewModel>> ObtenerConsolidadoDiaAsync(int empresaId, int? personaIdFiltro)
         {
-            var (inicioDia, finDia) = ObtenerRangoUtcActual();
+            var (inicioDia, finDia) = TimeZoneHelper.RangoDiaActualUtc();
             var query = ConstruirQueryPorRango(empresaId, inicioDia, finDia);
 
-            var esAdministrador = await PersonaEsAdministradorAsync(personaId);
-            if (!esAdministrador)
+            if (personaIdFiltro.HasValue)
             {
-                query = query.Where(r => r.PersonaId == personaId);
+                query = query.Where(r => r.PersonaId == personaIdFiltro.Value);
             }
 
             return await query
@@ -205,10 +211,12 @@ namespace Natural.Data.Areas.Gestion
             return true;
         }
 
-        public async Task<bool> ActualizarFormaPagoAsync(int registroServicioId, int empresaId, char? formaPago)
+        /// <param name="personaIdFiltro">Si se indica, el registro debe pertenecer a esa persona.</param>
+        public async Task<bool> ActualizarFormaPagoAsync(int registroServicioId, int empresaId, char? formaPago, int? personaIdFiltro)
         {
             var registro = await _context.RegistroServicio
-                .FirstOrDefaultAsync(r => r.Id == registroServicioId && r.EmpresaId == empresaId);
+                .FirstOrDefaultAsync(r => r.Id == registroServicioId && r.EmpresaId == empresaId
+                    && (personaIdFiltro == null || r.PersonaId == personaIdFiltro));
 
             if (registro is null)
             {
@@ -226,12 +234,6 @@ namespace Natural.Data.Areas.Gestion
             return true;
         }
 
-        private static (DateTime InicioDia, DateTime FinDia) ObtenerRangoUtcActual()
-        {
-            var inicioDia = DateTime.UtcNow.Date;
-            return (inicioDia, inicioDia.AddDays(1));
-        }
-
         private IQueryable<RegistroServicio> ConstruirQueryPorRango(int empresaId, DateTime inicio, DateTime fin)
         {
             return _context.RegistroServicio
@@ -240,16 +242,6 @@ namespace Natural.Data.Areas.Gestion
                     r.FechaServicio.HasValue &&
                     r.FechaServicio.Value >= inicio &&
                     r.FechaServicio.Value < fin);
-        }
-
-        private async Task<bool> PersonaEsAdministradorAsync(int personaId)
-        {
-            var rol = await _context.PersonaRol
-                .Where(pr => pr.PersonaId == personaId)
-                .Select(pr => pr.RolCodigo)
-                .FirstOrDefaultAsync();
-
-            return rol == "01";
         }
     }
 }
