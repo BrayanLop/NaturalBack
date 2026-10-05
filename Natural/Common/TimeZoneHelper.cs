@@ -2,8 +2,20 @@ namespace Natural.Common
 {
     public static class TimeZoneHelper
     {
-        private static readonly TimeZoneInfo ZonaColombia =
-            TimeZoneInfo.FindSystemTimeZoneById("SA Pacific Standard Time");
+        // Colombia no tiene horario de verano: si el sistema no tiene la zona (p.ej. contenedor sin tzdata)
+        // se usa un desfase fijo de UTC-5.
+        private static readonly TimeZoneInfo ZonaColombia = ObtenerZonaColombia();
+
+        private static TimeZoneInfo ObtenerZonaColombia()
+        {
+            foreach (var id in new[] { "America/Bogota", "SA Pacific Standard Time" })
+            {
+                if (TimeZoneInfo.TryFindSystemTimeZoneById(id, out var zona))
+                    return zona;
+            }
+
+            return TimeZoneInfo.CreateCustomTimeZone("Colombia", TimeSpan.FromHours(-5), "Colombia", "Colombia");
+        }
 
         public static DateTime ColombiaNow => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ZonaColombia);
 

@@ -57,7 +57,8 @@ namespace Natural.Data.Areas.Configuracion
 
         public async Task<bool> ActualizarConfiguracionServicioAsync(ConfiguracionServicioViewModel model)
         {
-            var config = await _context.ConfiguracionServicio.FindAsync(model.Id);
+            var config = await _context.ConfiguracionServicio
+                .FirstOrDefaultAsync(c => c.Id == model.Id && c.EmpresaId == model.EmpresaId);
 
             if (config == null)
                 return false;
@@ -69,16 +70,16 @@ namespace Natural.Data.Areas.Configuracion
             config.Estado = model.Estado;
             config.ServicioId = model.ServicioId;
 
-            _context.ConfiguracionServicio.Update(config);
             await _context.SaveChangesAsync();
 
             return true;
         }
 
-        public async Task<ConfiguracionServicioViewModel?> ObtenerConfiguracionPorIdAsync(int id)
+        public async Task<ConfiguracionServicioViewModel?> ObtenerConfiguracionPorIdAsync(int id, int empresaId)
         {
             return await _context.ConfiguracionServicio
-                .Where(c => c.Id == id)
+                .AsNoTracking()
+                .Where(c => c.Id == id && c.EmpresaId == empresaId)
                 .Select(ConfiguracionServicioSelector)
                 .FirstOrDefaultAsync();
         }
@@ -86,14 +87,16 @@ namespace Natural.Data.Areas.Configuracion
         public async Task<List<ConfiguracionServicioViewModel>> ObtenerConfiguracionesPorEmpresaAsync(int empresaId)
         {
             return await _context.ConfiguracionServicio
+                .AsNoTracking()
                 .Where(c => c.EmpresaId == empresaId)
                 .Select(ConfiguracionServicioSelector)
                 .ToListAsync();
         }
 
-        public async Task<bool> EliminarConfiguracionServicioAsync(int id)
+        public async Task<bool> EliminarConfiguracionServicioAsync(int id, int empresaId)
         {
-            var config = await _context.ConfiguracionServicio.FindAsync(id);
+            var config = await _context.ConfiguracionServicio
+                .FirstOrDefaultAsync(c => c.Id == id && c.EmpresaId == empresaId);
             if (config == null)
                 return false;
 
@@ -116,6 +119,9 @@ namespace Natural.Data.Areas.Configuracion
                     c.EmpresaId == model.EmpresaId &&
                     c.Periodicidad == model.Periodicidad);
 
+            // La periodicidad es parte de la llave: cambiarla implica borrar y crear, en una sola transacción.
+            await using var transaccion = await _context.Database.BeginTransactionAsync();
+
             if (actual != null)
             {
                 _context.ConfiguracionGeneral.Remove(actual);
@@ -132,6 +138,7 @@ namespace Natural.Data.Areas.Configuracion
             _context.ConfiguracionGeneral.Add(nueva);
 
             await _context.SaveChangesAsync();
+            await transaccion.CommitAsync();
 
             return new ConfiguracionGeneralViewModel
             {

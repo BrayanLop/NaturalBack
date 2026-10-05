@@ -33,15 +33,6 @@ public partial class NaturalDbContext : DbContext
     public virtual DbSet<ConfiguracionServicio> ConfiguracionServicio { get; set; }
     public virtual DbSet<EvidenciaRegistroServicio> EvidenciaRegistroServicios { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-#warning Para proteger tu cadena de conexión, muévela a appsettings.json o variables de entorno.
-        if (!optionsBuilder.IsConfigured)
-        {
-             optionsBuilder.UseNpgsql("User Id=postgres.rsnemoylcmbfpsirflly;Password=Losdelsur99*;Server=aws-0-us-east-1.pooler.supabase.com;Port=5432;Database=postgres;SSL Mode=Require;Trust Server Certificate=true"); 
-        }
-    }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ConfiguracionGeneral>(entity =>

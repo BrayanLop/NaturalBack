@@ -176,7 +176,7 @@ namespace Natural.Data.Areas.Contabilidad
             }
         }
 
-        public async Task LiquidarServiciosAsync(int empresaId, int personaId, string? egresosId)
+        public async Task LiquidarServiciosAsync(int empresaId, int personaId, IReadOnlyCollection<int> idsEgresos)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -188,19 +188,10 @@ namespace Natural.Data.Areas.Contabilidad
 
                 var listaEgresos = new List<EgresoEmpresaViewModel>();
 
-                if (!egresosId.IsNullOrEmpty())
+                if (idsEgresos.Count > 0)
                 {
                     var egresos = await ObtenerEgresosPorPersonaAsync(empresaId, personaId);
-                    var ids = egresosId?
-                            .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                            .Select(x => int.Parse(x))
-                            .ToList();
-
-                    foreach (var id in ids)
-                    {
-                        var egresosFiltrados = egresos.FindAll(e => e.EgresoId == id);
-                        listaEgresos.AddRange(egresosFiltrados);
-                    }
+                    listaEgresos.AddRange(egresos.Where(e => idsEgresos.Contains(e.EgresoId)));
                 }
 
                 var valorTotalADescontar = listaEgresos.Sum(e => e.ValorEgreso);
@@ -249,13 +240,14 @@ namespace Natural.Data.Areas.Contabilidad
                             ValorDescontadoEnIngreso = valorTotalADescontar
                             //TODO: Agregar referencia a liquidación para poder relacionar ingresos con egresos descontados
                         });
+
+                        // El descuento se registra una sola vez, en el primer ingreso generado.
+                        valorTotalADescontar = 0;
                     }
 
                     registro.Liquidado = true;
                     registro.FechaLiquidado = DateTime.UtcNow;
                     registro.IdLiquidacion = idLiquidacion;
-
-                    valorTotalADescontar = 0;
                 }
 
                 // ✅ PROCESAR LIQUIDACIÓN DE EGRESOS (solo si hay egresos)

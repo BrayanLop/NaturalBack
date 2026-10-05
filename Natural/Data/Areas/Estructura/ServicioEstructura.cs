@@ -1,10 +1,10 @@
 ﻿using System.Linq.Expressions;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Natural.Data.Domain;
 using Natural.Data.Domain.Estructura;
+using Natural.Data.Domain.Sesion;
 using Natural.Models.Areas.Estructura;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace Natural.Data.Areas.Estructura
 {
@@ -43,10 +43,12 @@ namespace Natural.Data.Areas.Estructura
         };
 
         private readonly NaturalDbContext _context;
+        private readonly IPasswordHasher<Usuario> _passwordHasher;
 
-        public ServicioEstructura(NaturalDbContext context)
+        public ServicioEstructura(NaturalDbContext context, IPasswordHasher<Usuario> passwordHasher)
         {
             _context = context;
+            _passwordHasher = passwordHasher;
         }
 
         #region Servicio
@@ -80,11 +82,11 @@ namespace Natural.Data.Areas.Estructura
                 .ToListAsync();
         }
 
-        public Task<ServicioViewModel?> ObtenerServicioPorIdAsync(int id)
+        public Task<ServicioViewModel?> ObtenerServicioPorIdAsync(int id, int empresaId)
         {
             return _context.Servicio
                 .AsNoTracking()
-                .Where(s => s.Id == id)
+                .Where(s => s.Id == id && s.EmpresaId == empresaId)
                 .Select(ServicioProjection)
                 .FirstOrDefaultAsync();
         }
@@ -93,7 +95,8 @@ namespace Natural.Data.Areas.Estructura
         {
             ArgumentNullException.ThrowIfNull(servicioViewModel);
 
-            var servicio = await _context.Servicio.FindAsync(servicioViewModel.Id);
+            var servicio = await _context.Servicio
+                .FirstOrDefaultAsync(s => s.Id == servicioViewModel.Id && s.EmpresaId == servicioViewModel.EmpresaId);
             if (servicio == null)
             {
                 return false;
@@ -103,17 +106,15 @@ namespace Natural.Data.Areas.Estructura
             servicio.Descripcion = servicioViewModel.Descripcion;
             servicio.Disponible = servicioViewModel.Disponible;
             servicio.Precio = servicioViewModel.Precio;
-            servicio.EmpresaId = servicioViewModel.EmpresaId;
 
-            _context.Servicio.Update(servicio);
             await _context.SaveChangesAsync();
 
             return true;
         }
 
-        public async Task<bool> EliminarServicioAsync(int id)
+        public async Task<bool> EliminarServicioAsync(int id, int empresaId)
         {
-            var servicio = await _context.Servicio.FindAsync(id);
+            var servicio = await _context.Servicio.FirstOrDefaultAsync(s => s.Id == id && s.EmpresaId == empresaId);
             if (servicio == null)
             {
                 return false;
@@ -169,11 +170,12 @@ namespace Natural.Data.Areas.Estructura
                 .ToListAsync();
         }
 
-        public Task<PersonaViewModel?> ObtenerPersonaPorIdAsync(int id)
+        /// <param name="empresaId">Si se indica, la persona debe pertenecer a esa empresa.</param>
+        public Task<PersonaViewModel?> ObtenerPersonaPorIdAsync(int id, int? empresaId = null)
         {
-            return _context.Persona.Include("Empresa")
+            return _context.Persona
                 .AsNoTracking()
-                .Where(p => p.Id == id)
+                .Where(p => p.Id == id && (empresaId == null || p.EmpresaId == empresaId))
                 .Select(PersonaProjection)
                 .FirstOrDefaultAsync();
         }
@@ -182,7 +184,8 @@ namespace Natural.Data.Areas.Estructura
         {
             ArgumentNullException.ThrowIfNull(personaViewModel);
 
-            var persona = await _context.Persona.FindAsync(personaViewModel.Id);
+            var persona = await _context.Persona
+                .FirstOrDefaultAsync(p => p.Id == personaViewModel.Id && p.EmpresaId == personaViewModel.EmpresaId);
             if (persona == null)
             {
                 return false;
@@ -196,17 +199,15 @@ namespace Natural.Data.Areas.Estructura
             persona.Edad = personaViewModel.Edad;
             persona.Celular = personaViewModel.Celular;
             persona.FechaNacimiento = DateTime.SpecifyKind(personaViewModel.FechaNacimiento, DateTimeKind.Utc);
-            persona.EmpresaId = personaViewModel.EmpresaId;
 
-            _context.Persona.Update(persona);
             await _context.SaveChangesAsync();
 
             return true;
         }
 
-        public async Task<bool> EliminarPersonaAsync(int id)
+        public async Task<bool> EliminarPersonaAsync(int id, int empresaId)
         {
-            var persona = await _context.Persona.FindAsync(id);
+            var persona = await _context.Persona.FirstOrDefaultAsync(p => p.Id == id && p.EmpresaId == empresaId);
             if (persona == null)
             {
                 return false;
@@ -217,8 +218,6 @@ namespace Natural.Data.Areas.Estructura
 
             return true;
         }
-
-
 
         #endregion Persona
 
@@ -244,19 +243,20 @@ namespace Natural.Data.Areas.Estructura
 
         #region Usuario
 
-        public async Task<bool> ActualizarContrasenaUsuarioAsync(int usuarioId, string nuevaContrasena)
+        /// <param name="personaIdSesion">Persona autenticada: el usuario debe pertenecerle.</param>
+        public async Task<bool> ActualizarContrasenaUsuarioAsync(int usuarioId, int personaIdSesion, string nuevaContrasena)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(nuevaContrasena);
 
-            var usuario = await _context.Usuario.FindAsync(usuarioId);
+            var usuario = await _context.Usuario
+                .FirstOrDefaultAsync(u => u.Id == usuarioId && u.PersonaId == personaIdSesion);
             if (usuario == null)
             {
                 return false;
             }
 
-            usuario.ClaveHash = nuevaContrasena;
+            usuario.ClaveHash = _passwordHasher.HashPassword(usuario, nuevaContrasena);
 
-            _context.Usuario.Update(usuario);
             await _context.SaveChangesAsync();
 
             return true;

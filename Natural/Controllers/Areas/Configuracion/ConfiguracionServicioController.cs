@@ -1,10 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Natural.Common;
 using Natural.Data.Areas.Configuracion;
 using Natural.Models.Areas.Configuracion;
 
-[ApiController]
 [Route("api/[controller]")]
-public class ConfiguracionServicioController : ControllerBase
+public class ConfiguracionServicioController : ApiControllerBase
 {
     private readonly ServicioConfiguracion _servicioConfiguracion;
 
@@ -14,9 +15,10 @@ public class ConfiguracionServicioController : ControllerBase
     }
 
     [HttpPost("Crear")]
+    [Authorize(Policy = Roles.PoliticaGestion)]
     public async Task<IActionResult> Crear([FromBody] ConfiguracionServicioViewModel configuracion)
     {
-        if (!TryGetEmpresaId(out var empresaId, out var errorResult))
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
             return errorResult!;
 
         configuracion.EmpresaId = empresaId;
@@ -26,7 +28,7 @@ public class ConfiguracionServicioController : ControllerBase
             var nuevaConfiguracion = await _servicioConfiguracion.CrearConfiguracionServicioAsync(configuracion);
             return CreatedAtAction(nameof(ObtenerPorId), new { id = nuevaConfiguracion.Id }, nuevaConfiguracion);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
             return BadRequest(ex.Message);
         }
@@ -35,7 +37,7 @@ public class ConfiguracionServicioController : ControllerBase
     [HttpGet("Obtener")]
     public async Task<IActionResult> ObtenerTodos()
     {
-        if (!TryGetEmpresaId(out var empresaId, out var errorResult))
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
             return errorResult!;
 
         var configuraciones = await _servicioConfiguracion.ObtenerConfiguracionesPorEmpresaAsync(empresaId);
@@ -45,7 +47,10 @@ public class ConfiguracionServicioController : ControllerBase
     [HttpGet("Obtener/{id}")]
     public async Task<IActionResult> ObtenerPorId(int id)
     {
-        var configuracion = await _servicioConfiguracion.ObtenerConfiguracionPorIdAsync(id);
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+            return errorResult!;
+
+        var configuracion = await _servicioConfiguracion.ObtenerConfiguracionPorIdAsync(id, empresaId);
         if (configuracion == null)
             return NotFound();
 
@@ -53,12 +58,13 @@ public class ConfiguracionServicioController : ControllerBase
     }
 
     [HttpPut("Actualizar/{id}")]
+    [Authorize(Policy = Roles.PoliticaGestion)]
     public async Task<IActionResult> Actualizar(int id, [FromBody] ConfiguracionServicioViewModel configuracion)
     {
         if (id != configuracion.Id)
             return BadRequest("Id de configuración no coincide.");
 
-        if (!TryGetEmpresaId(out var empresaId, out var errorResult))
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
             return errorResult!;
 
         configuracion.EmpresaId = empresaId;
@@ -71,32 +77,23 @@ public class ConfiguracionServicioController : ControllerBase
 
             return Ok(configuracion);
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
             return BadRequest(ex.Message);
         }
     }
 
     [HttpDelete("Eliminar/{id}")]
+    [Authorize(Policy = Roles.PoliticaGestion)]
     public async Task<IActionResult> Eliminar(int id)
     {
-        var eliminado = await _servicioConfiguracion.EliminarConfiguracionServicioAsync(id);
+        if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+            return errorResult!;
+
+        var eliminado = await _servicioConfiguracion.EliminarConfiguracionServicioAsync(id, empresaId);
         if (!eliminado)
             return NotFound();
 
         return NoContent();
-    }
-
-    private bool TryGetEmpresaId(out int empresaId, out IActionResult? errorResult)
-    {
-        var empresaIdHeader = Request.Headers["empresaId"].FirstOrDefault();
-        if (!int.TryParse(empresaIdHeader, out empresaId))
-        {
-            errorResult = BadRequest("Header 'empresaId' inválido.");
-            return false;
-        }
-
-        errorResult = null;
-        return true;
     }
 }

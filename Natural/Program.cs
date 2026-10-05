@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Natural.Common;
 using Natural.Data.Areas.Configuracion;
 using Natural.Data.Areas.Contabilidad;
 using Natural.Data.Areas.Estructura;
@@ -8,20 +11,26 @@ using Natural.Data.Areas.Gestion;
 using Natural.Data.Areas.Seguridad;
 using Natural.Data.Areas.Sesion;
 using Natural.Data.Domain;
+using Natural.Data.Domain.Sesion;
 using Natural.Data.Services;
 using System.Text;
 using Supabase;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Registrar el DbContext con la cadena de conexi�n
-builder.Services.AddDbContext<NaturalDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Los secretos NO van en appsettings.json: en local se usan user-secrets y en el servidor variables de entorno
+// (ConnectionStrings__DefaultConnection, Supabase__Url, Supabase__Key, Jwt__Key, ...).
+string ConfigRequerida(string clave) =>
+    builder.Configuration[clave] is { Length: > 0 } valor
+        ? valor
+        : throw new InvalidOperationException($"Falta la configuración '{clave}'. Defínela con user-secrets o variables de entorno.");
 
-// Registrar cliente de Supabase
-var supabaseUrl = builder.Configuration["Supabase:Url"] ?? throw new Exception("Supabase URL no configurada");
-var supabaseKey = builder.Configuration["Supabase:Key"] ?? throw new Exception("Supabase Key no configurada");
+var connectionString = ConfigRequerida("ConnectionStrings:DefaultConnection");
+var supabaseUrl = ConfigRequerida("Supabase:Url");
+var supabaseKey = ConfigRequerida("Supabase:Key");
+var jwtKey = ConfigRequerida("Jwt:Key");
+
+builder.Services.AddDbContext<NaturalDbContext>(options => options.UseNpgsql(connectionString));
 
 builder.Services.AddScoped<Supabase.Client>(_ => new Supabase.Client(supabaseUrl, supabaseKey, new SupabaseOptions
 {
@@ -29,6 +38,7 @@ builder.Services.AddScoped<Supabase.Client>(_ => new Supabase.Client(supabaseUrl
     AutoConnectRealtime = false
 }));
 
+builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 builder.Services.AddScoped<SupabaseStorageService>();
 builder.Services.AddScoped<ServicioEstructura>();
 builder.Services.AddScoped<ServicioGestion>();
@@ -38,20 +48,23 @@ builder.Services.AddScoped<ServicioConfiguracion>();
 builder.Services.AddScoped<ServicioContabilidad>();
 builder.Services.AddScoped<ServicioSeguridad>();
 
-
-// Habilita CORS
+// CORS: si no se configuran orígenes (Cors:AllowedOrigins) se permite cualquiera, como antes.
+var origenesPermitidos = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", builder =>
+    options.AddDefaultPolicy(policy =>
     {
-        builder.AllowAnyOrigin()
-               .AllowAnyMethod()
-               .AllowAnyHeader();
+        if (origenesPermitidos.Length > 0)
+            policy.WithOrigins(origenesPermitidos);
+        else
+            policy.AllowAnyOrigin();
+
+        policy.AllowAnyMethod().AllowAnyHeader();
     });
 });
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -66,23 +79,29 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                ValidateIssuerSigningKey = true,
                ValidIssuer = builder.Configuration["Jwt:Issuer"],
                ValidAudience = builder.Configuration["Jwt:Audience"],
-               IssuerSigningKey = new SymmetricSecurityKey(
-                   Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+               IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
            };
        });
 
-   builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    // Todo endpoint exige usuario autenticado salvo que tenga [AllowAnonymous].
+    options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+    options.AddPolicy(Roles.PoliticaGestion, policy => policy.RequireRole(Roles.Administrador, Roles.SuperEmpleado));
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Errores no controlados: se registran en el log y el cliente recibe un ProblemDetails 500 sin detalles internos.
+app.UseExceptionHandler();
+
+if (app.Environment.IsDevelopment() || builder.Configuration.GetValue<bool>("Swagger:Enabled"))
+{
     app.UseSwagger();
     app.UseSwaggerUI();
+}
 
-// Habilita CORS
-app.UseCors("AllowAll");
-
-//app.UseHttpsRedirection();
+app.UseCors();
 
 app.UseAuthentication();
 app.UseAuthorization();

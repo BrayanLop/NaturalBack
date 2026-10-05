@@ -1,13 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Natural.Common;
 using Natural.Data.Areas.Estructura;
 
 namespace Natural.Controllers.Areas.Sesion
 {
-    [Authorize]
-    [ApiController]
     [Route("api/[controller]")]
-    public class UsuarioController : ControllerBase
+    public class UsuarioController : ApiControllerBase
     {
         private readonly ServicioEstructura _servicioEstructura;
 
@@ -31,7 +29,11 @@ namespace Natural.Controllers.Areas.Sesion
             if (request.NuevaContrasena.Length != 44)
                 return BadRequest("La contraseña debe enviarse en formato correcto");
 
-            var actualizado = await _servicioEstructura.ActualizarContrasenaUsuarioAsync(request.UsuarioId, request.NuevaContrasena);
+            if (!TryObtenerPersonaId(out var personaId, out var errorResult))
+                return errorResult!;
+
+            // Solo se puede cambiar la contraseña del usuario de la sesión actual.
+            var actualizado = await _servicioEstructura.ActualizarContrasenaUsuarioAsync(request.UsuarioId, personaId, request.NuevaContrasena);
             if (!actualizado)
                 return NotFound("No se pudo actualizar la contraseña del usuario.");
 
