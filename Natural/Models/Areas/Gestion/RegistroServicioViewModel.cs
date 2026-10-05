@@ -13,6 +13,15 @@
         public DateTime? FechaServicio { get; set; }
         public bool Liquidado { get; set; }
         public bool Confirmado { get; set; }
+        public bool Rechazado { get; set; }
+        public string? MotivoRechazo { get; set; }
+        public decimal Propina { get; set; }
+        public bool PropinaPagada { get; set; }
+        public DateTime? FechaPropinaPagada { get; set; }
+        public string? Observaciones { get; set; }
+        public decimal? ValorServicio { get; set; }
+        public decimal? PorcentajeTrabajador { get; set; }
+        public decimal? Comision { get; set; }
         public char? FormaPago { get; set; }
         public List<EvidenciaRegistroServicioViewModel> Evidencias { get; set; } = new List<EvidenciaRegistroServicioViewModel>();
     }

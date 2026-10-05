@@ -17,25 +17,25 @@ public class SupabaseStorageService
     {
         if (archivo == null || archivo.Length == 0)
         {
-            throw new ArgumentException("El archivo no puede estar vacío");
+            throw new ArgumentException("El archivo no puede estar vacÃ­o");
         }
 
-        // Validar que sea una imagen
-        var extensionesPermitidas = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+        // Validar tipo de archivo permitido (imï¿½genes + PDF para evidencias)
+        var extensionesPermitidas = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf" };
         var extension = Path.GetExtension(archivo.FileName).ToLowerInvariant();
-        
+
         if (!extensionesPermitidas.Contains(extension))
         {
-            throw new ArgumentException($"Solo se permiten archivos de imagen: {string.Join(", ", extensionesPermitidas)}");
+            throw new ArgumentException($"Solo se permiten estos tipos de archivo: {string.Join(", ", extensionesPermitidas)}");
         }
 
-        // Validar tamaño (max 5MB)
+        // Validar tamaï¿½o (max 5MB)
         if (archivo.Length > 5 * 1024 * 1024)
         {
             throw new ArgumentException("El archivo no puede superar los 5MB");
         }
 
-        // Generar nombre único
+        // Generar nombre ï¿½nico
         var nombreArchivo = $"{empresaId}/{registroServicioId}/{Guid.NewGuid()}{extension}";
 
         try
@@ -54,7 +54,7 @@ public class SupabaseStorageService
                     Upsert = false
                 });
 
-            // Obtener URL pública
+            // Obtener URL pï¿½blica
             var url = _supabaseClient.Storage
                 .From(BucketName)
                 .GetPublicUrl(nombreArchivo);

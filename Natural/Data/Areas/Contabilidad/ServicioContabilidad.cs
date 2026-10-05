@@ -162,7 +162,9 @@ namespace Natural.Data.Areas.Contabilidad
                                     NombreServicio = s.Servicio?.Nombre ?? "Servicio desconocido",
                                     Hora = horaColombia,
                                     Confirmado = s.Confirmado,
-                                    ValorTrabajador = CalcularPagoRegistro(s)
+                                    ValorTrabajador = CalcularPagoRegistro(s),
+                                    Propina = s.Propina,
+                                    PropinaPagada = s.PropinaPagada
                                 };
                             }).ToList()
                         };

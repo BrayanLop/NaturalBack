@@ -26,24 +26,47 @@ namespace Natural.Data.Areas.Gestion
 
             var personasValidas = await _context.Persona
                 .CountAsync(p => personasIds.Contains(p.Id) && p.EmpresaId == empresaId);
-            var serviciosValidos = await _context.Servicio
-                .CountAsync(s => serviciosIds.Contains(s.Id) && s.EmpresaId == empresaId);
 
-            if (personasValidas != personasIds.Count || serviciosValidos != serviciosIds.Count)
+            // Servicios de la empresa con su precio actual: valida pertenencia y sirve para el snapshot.
+            var preciosServicio = await _context.Servicio
+                .Where(s => serviciosIds.Contains(s.Id) && s.EmpresaId == empresaId)
+                .ToDictionaryAsync(s => s.Id, s => s.Precio);
+
+            if (personasValidas != personasIds.Count || preciosServicio.Count != serviciosIds.Count)
                 throw new InvalidOperationException("Alguna persona o servicio no pertenece a la empresa.");
+
+            var porcentajesTrabajador = await _context.ConfiguracionServicio
+                .Where(c => serviciosIds.Contains(c.ServicioId) && c.EmpresaId == empresaId)
+                .GroupBy(c => c.ServicioId)
+                .Select(g => new { ServicioId = g.Key, g.First().PorcentajeTrabajador })
+                .ToDictionaryAsync(x => x.ServicioId, x => x.PorcentajeTrabajador);
 
             var fechaActual = DateTime.UtcNow;
 
+            // Snapshot histórico: valor, porcentaje y comisión al momento del registro.
             var registrosEntidad = registros
-                .Select(r => new RegistroServicio
+                .Select(r =>
                 {
-                    PersonaId = r.PersonaId,
-                    ServicioId = r.ServicioId,
-                    EmpresaId = empresaId,
-                    FechaServicio = r.FechaServicio ?? fechaActual,
-                    Liquidado = false,
-                    Confirmado = r.Confirmado,
-                    FormaPago = r.FormaPago
+                    var valorServicio = preciosServicio[r.ServicioId];
+                    var porcentaje = porcentajesTrabajador.TryGetValue(r.ServicioId, out var pct) ? pct : 0m;
+                    var comision = Math.Round(valorServicio * porcentaje / 100m, 2);
+
+                    return new RegistroServicio
+                    {
+                        PersonaId = r.PersonaId,
+                        ServicioId = r.ServicioId,
+                        EmpresaId = empresaId,
+                        FechaServicio = r.FechaServicio ?? fechaActual,
+                        Liquidado = false,
+                        Confirmado = r.Confirmado,
+                        Rechazado = false,
+                        Propina = r.Propina,
+                        Observaciones = r.Observaciones,
+                        ValorServicio = valorServicio,
+                        PorcentajeTrabajador = porcentaje,
+                        Comision = comision,
+                        FormaPago = r.FormaPago
+                    };
                 })
                 .OrderBy(r => r.FechaServicio)
                 .ToList();
@@ -103,6 +126,15 @@ namespace Natural.Data.Areas.Gestion
                     FechaServicio = r.FechaServicio,
                     Liquidado = r.Liquidado,
                     Confirmado = r.Confirmado,
+                    Rechazado = r.Rechazado,
+                    MotivoRechazo = r.MotivoRechazo,
+                    Propina = r.Propina,
+                    PropinaPagada = r.PropinaPagada,
+                    FechaPropinaPagada = r.FechaPropinaPagada,
+                    Observaciones = r.Observaciones,
+                    ValorServicio = r.ValorServicio,
+                    PorcentajeTrabajador = r.PorcentajeTrabajador,
+                    Comision = r.Comision,
                     FormaPago = r.FormaPago,
 
                     // Incluir evidencias directamente
@@ -158,6 +190,15 @@ namespace Natural.Data.Areas.Gestion
                     NombreServicio = r.Servicio != null ? r.Servicio.Nombre : null,
                     FechaServicio = r.FechaServicio,
                     Confirmado = r.Confirmado,
+                    Rechazado = r.Rechazado,
+                    MotivoRechazo = r.MotivoRechazo,
+                    Propina = r.Propina,
+                    PropinaPagada = r.PropinaPagada,
+                    FechaPropinaPagada = r.FechaPropinaPagada,
+                    Observaciones = r.Observaciones,
+                    ValorServicio = r.ValorServicio,
+                    PorcentajeTrabajador = r.PorcentajeTrabajador,
+                    Comision = r.Comision,
                     FormaPago = r.FormaPago
                 })
                 .ToListAsync();
@@ -200,12 +241,56 @@ namespace Natural.Data.Areas.Gestion
                 return false;
             }
 
-            if (registro.Confirmado == confirmado)
+            registro.Confirmado = confirmado;
+
+            // Al aprobar, se limpia cualquier rechazo previo.
+            if (confirmado)
             {
-                return true;
+                registro.Rechazado = false;
+                registro.MotivoRechazo = null;
             }
 
-            registro.Confirmado = confirmado;
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<bool> RechazarAsync(int registroServicioId, int empresaId, string? motivo)
+        {
+            var registro = await _context.RegistroServicio
+                .FirstOrDefaultAsync(r => r.Id == registroServicioId && r.EmpresaId == empresaId);
+
+            if (registro is null)
+            {
+                return false;
+            }
+
+            // No se puede rechazar un registro ya liquidado.
+            if (registro.Liquidado)
+            {
+                return false;
+            }
+
+            registro.Rechazado = true;
+            registro.Confirmado = false;
+            registro.MotivoRechazo = string.IsNullOrWhiteSpace(motivo) ? null : motivo.Trim();
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<bool> MarcarPropinaPagadaAsync(int registroServicioId, int empresaId, bool pagada)
+        {
+            var registro = await _context.RegistroServicio
+                .FirstOrDefaultAsync(r => r.Id == registroServicioId && r.EmpresaId == empresaId);
+
+            if (registro is null)
+            {
+                return false;
+            }
+
+            registro.PropinaPagada = pagada;
+            registro.FechaPropinaPagada = pagada ? DateTime.UtcNow : null;
             await _context.SaveChangesAsync();
 
             return true;
