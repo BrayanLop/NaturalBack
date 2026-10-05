@@ -21,4 +21,7 @@ public partial class EgresosEmpresa
     public virtual Persona? Persona { get; set; }
     public bool SeDescuenta { get; set; }
     public bool Liquidado { get; set; }
+
+    /// <summary>'E' efectivo, 'T' transferencia. Null en egresos antiguos o registrados sin forma de pago.</summary>
+    public char? FormaPago { get; set; }
 }

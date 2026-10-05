@@ -18,5 +18,8 @@ namespace Natural.Models.Areas.Contabilidad
         public DateOnly? FechaRegistro { get; set; }
 
         public bool SeDescuenta { get; set; }
+
+        /// <summary>'E' efectivo, 'T' transferencia. Opcional (null en egresos antiguos).</summary>
+        public char? FormaPago { get; set; }
     }
 }

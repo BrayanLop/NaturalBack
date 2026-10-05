@@ -22,6 +22,22 @@ namespace Natural.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Natural.Data.Domain.Configuracion.ConfiguracionGeneral", b =>
+                {
+                    b.Property<int>("EmpresaId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Periodicidad")
+                        .HasColumnType("character varying");
+
+                    b.Property<short>("ValorPeriodicidad")
+                        .HasColumnType("smallint");
+
+                    b.HasKey("EmpresaId", "Periodicidad");
+
+                    b.ToTable("ConfiguracionGeneral", (string)null);
+                });
+
             modelBuilder.Entity("Natural.Data.Domain.Configuracion.ConfiguracionServicio", b =>
                 {
                     b.Property<int>("Id")
@@ -37,11 +53,6 @@ namespace Natural.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp")
-                        .HasDefaultValueSql("NOW()");
 
                     b.Property<decimal>("PorcentajeEmpresa")
                         .HasColumnType("numeric(5, 2)");
@@ -131,7 +142,6 @@ namespace Natural.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("Residencia")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
@@ -147,11 +157,10 @@ namespace Natural.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("RolCodigo")
-                        .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
 
-                    b.HasIndex("PersonaId");
+                    b.HasKey("PersonaId", "RolCodigo");
 
                     b.HasIndex("RolCodigo");
 
@@ -172,12 +181,7 @@ namespace Natural.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<int?>("PersonaId")
-                        .HasColumnType("integer");
-
                     b.HasKey("Codigo");
-
-                    b.HasIndex("PersonaId");
 
                     b.ToTable("Rol", (string)null);
                 });
@@ -217,7 +221,66 @@ namespace Natural.Migrations
                     b.ToTable("Servicio", (string)null);
                 });
 
-            modelBuilder.Entity("Natural.Data.Domain.Gestion.RegistroServicio", b =>
+            modelBuilder.Entity("Natural.Data.Domain.Estructura.UsuarioRol", b =>
+                {
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RolCodigo")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.HasKey("UsuarioId", "RolCodigo");
+
+                    b.HasIndex("RolCodigo");
+
+                    b.ToTable("UsuarioRol", (string)null);
+                });
+
+            modelBuilder.Entity("Natural.Data.Domain.Gestion.EgresosEmpresa", b =>
+                {
+                    b.Property<int>("EgresoId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("EgresoId"));
+
+                    b.Property<int?>("EmpresaId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("FechaRegistro")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<char?>("FormaPago")
+                        .HasColumnType("character(1)");
+
+                    b.Property<bool>("Liquidado")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("PersonaId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("SeDescuenta")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal?>("ValorEgreso")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("EgresoId")
+                        .HasName("EgresosEmpresa_pkey");
+
+                    b.HasIndex("EmpresaId");
+
+                    b.HasIndex("PersonaId");
+
+                    b.ToTable("EgresosEmpresa", (string)null);
+                });
+
+            modelBuilder.Entity("Natural.Data.Domain.Gestion.EvidenciaRegistroServicio", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -228,8 +291,183 @@ namespace Natural.Migrations
                     b.Property<int?>("EmpresaId")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime>("FechaSubida")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("NombreArchivo")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<int>("RegistroServicioId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UrlEvidencia")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RegistroServicioId");
+
+                    b.ToTable("EvidenciaRegistroServicio", (string)null);
+                });
+
+            modelBuilder.Entity("Natural.Data.Domain.Gestion.IngresosEmpresa", b =>
+                {
+                    b.Property<long>("IngresoId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("IngresoId"));
+
+                    b.Property<int?>("EmpresaId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("FechaIngreso")
+                        .HasColumnType("date");
+
+                    b.Property<decimal?>("ValorDescontadoEnIngreso")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("ValorIngreso")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("IngresoId")
+                        .HasName("IngresosEmpresa_pkey");
+
+                    b.HasIndex("EmpresaId");
+
+                    b.ToTable("IngresosEmpresa", (string)null);
+                });
+
+            modelBuilder.Entity("Natural.Data.Domain.Gestion.Liquidacion", b =>
+                {
+                    b.Property<string>("IdLiquidacion")
+                        .HasMaxLength(36)
+                        .HasColumnType("character varying(36)");
+
+                    b.Property<int>("CantidadServicios")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EmpresaId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("FechaLiquidacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("NetoPagado")
+                        .HasColumnType("numeric(18, 2)");
+
+                    b.Property<int>("PersonaId")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("TotalComision")
+                        .HasColumnType("numeric(18, 2)");
+
+                    b.Property<decimal>("TotalDeducciones")
+                        .HasColumnType("numeric(18, 2)");
+
+                    b.Property<decimal>("TotalFacturado")
+                        .HasColumnType("numeric(18, 2)");
+
+                    b.HasKey("IdLiquidacion");
+
+                    b.HasIndex("PersonaId");
+
+                    b.HasIndex("EmpresaId", "FechaLiquidacion")
+                        .HasDatabaseName("IX_Liquidacion_Empresa_Fecha");
+
+                    b.HasIndex("EmpresaId", "PersonaId")
+                        .HasDatabaseName("IX_Liquidacion_Empresa_Persona");
+
+                    b.ToTable("Liquidacion", (string)null);
+                });
+
+            modelBuilder.Entity("Natural.Data.Domain.Gestion.LiquidacionEgreso", b =>
+                {
+                    b.Property<int>("IdLiquidacionEgreso")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdLiquidacionEgreso"));
+
+                    b.Property<int>("EmpresaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IdEgreso")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("IdLiquidacion")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("character varying(36)");
+
+                    b.HasKey("IdLiquidacionEgreso");
+
+                    b.HasIndex("EmpresaId");
+
+                    b.HasIndex("IdEgreso");
+
+                    b.HasIndex("IdLiquidacion", "IdEgreso")
+                        .IsUnique()
+                        .HasDatabaseName("UX_LiquidacionEgreso_Liquidacion_Egreso");
+
+                    b.ToTable("LiquidacionEgreso", (string)null);
+                });
+
+            modelBuilder.Entity("Natural.Data.Domain.Gestion.LiquidacionPago", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<char>("FormaPago")
+                        .HasColumnType("character(1)");
+
+                    b.Property<string>("IdLiquidacion")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("character varying(36)");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("numeric(18, 2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdLiquidacion")
+                        .HasDatabaseName("IX_LiquidacionPago_IdLiquidacion");
+
+                    b.ToTable("LiquidacionPago", (string)null);
+                });
+
+            modelBuilder.Entity("Natural.Data.Domain.Gestion.RegistroServicio", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Confirmado")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("EmpresaId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("FechaLiquidado")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("FechaServicio")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<char?>("FormaPago")
+                        .HasColumnType("character(1)");
+
+                    b.Property<string>("IdLiquidacion")
+                        .HasColumnType("text");
 
                     b.Property<bool>("Liquidado")
                         .HasColumnType("boolean");
@@ -282,6 +520,18 @@ namespace Natural.Migrations
                     b.ToTable("Usuario", (string)null);
                 });
 
+            modelBuilder.Entity("Natural.Data.Domain.Configuracion.ConfiguracionGeneral", b =>
+                {
+                    b.HasOne("Natural.Data.Domain.Estructura.Empresa", "Empresa")
+                        .WithMany("ConfiguracionGeneral")
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("ConfiguracionGeneral_EmpresaId_fkey");
+
+                    b.Navigation("Empresa");
+                });
+
             modelBuilder.Entity("Natural.Data.Domain.Configuracion.ConfiguracionServicio", b =>
                 {
                     b.HasOne("Natural.Data.Domain.Estructura.Empresa", "Empresa")
@@ -332,13 +582,6 @@ namespace Natural.Migrations
                     b.Navigation("RolCodigoNavigation");
                 });
 
-            modelBuilder.Entity("Natural.Data.Domain.Estructura.Rol", b =>
-                {
-                    b.HasOne("Natural.Data.Domain.Estructura.Persona", null)
-                        .WithMany("Rol")
-                        .HasForeignKey("PersonaId");
-                });
-
             modelBuilder.Entity("Natural.Data.Domain.Estructura.Servicio", b =>
                 {
                     b.HasOne("Natural.Data.Domain.Estructura.Empresa", "Empresa")
@@ -347,6 +590,115 @@ namespace Natural.Migrations
                         .HasConstraintName("FK_Servicio_Empresa");
 
                     b.Navigation("Empresa");
+                });
+
+            modelBuilder.Entity("Natural.Data.Domain.Estructura.UsuarioRol", b =>
+                {
+                    b.HasOne("Natural.Data.Domain.Estructura.Rol", "RolCodigoNavigation")
+                        .WithMany()
+                        .HasForeignKey("RolCodigo")
+                        .IsRequired()
+                        .HasConstraintName("FK_UsuarioRol_Rol");
+
+                    b.HasOne("Natural.Data.Domain.Sesion.Usuario", "Persona")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .IsRequired()
+                        .HasConstraintName("FK_UsuarioRol_Usuario");
+
+                    b.Navigation("Persona");
+
+                    b.Navigation("RolCodigoNavigation");
+                });
+
+            modelBuilder.Entity("Natural.Data.Domain.Gestion.EgresosEmpresa", b =>
+                {
+                    b.HasOne("Natural.Data.Domain.Estructura.Empresa", "Empresa")
+                        .WithMany("EgresosEmpresas")
+                        .HasForeignKey("EmpresaId")
+                        .HasConstraintName("EgresosEmpresa_EmpresaId_fkey");
+
+                    b.HasOne("Natural.Data.Domain.Estructura.Persona", "Persona")
+                        .WithMany()
+                        .HasForeignKey("PersonaId");
+
+                    b.Navigation("Empresa");
+
+                    b.Navigation("Persona");
+                });
+
+            modelBuilder.Entity("Natural.Data.Domain.Gestion.EvidenciaRegistroServicio", b =>
+                {
+                    b.HasOne("Natural.Data.Domain.Gestion.RegistroServicio", "RegistroServicio")
+                        .WithMany("Evidencias")
+                        .HasForeignKey("RegistroServicioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RegistroServicio");
+                });
+
+            modelBuilder.Entity("Natural.Data.Domain.Gestion.IngresosEmpresa", b =>
+                {
+                    b.HasOne("Natural.Data.Domain.Estructura.Empresa", "Empresa")
+                        .WithMany("IngresosEmpresas")
+                        .HasForeignKey("EmpresaId")
+                        .HasConstraintName("IngresosEmpresa_EmpresaId_fkey");
+
+                    b.Navigation("Empresa");
+                });
+
+            modelBuilder.Entity("Natural.Data.Domain.Gestion.Liquidacion", b =>
+                {
+                    b.HasOne("Natural.Data.Domain.Estructura.Empresa", "Empresa")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_Liquidacion_Empresa");
+
+                    b.HasOne("Natural.Data.Domain.Estructura.Persona", "Persona")
+                        .WithMany()
+                        .HasForeignKey("PersonaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_Liquidacion_Persona");
+
+                    b.Navigation("Empresa");
+
+                    b.Navigation("Persona");
+                });
+
+            modelBuilder.Entity("Natural.Data.Domain.Gestion.LiquidacionEgreso", b =>
+                {
+                    b.HasOne("Natural.Data.Domain.Estructura.Empresa", "Empresa")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Natural.Data.Domain.Gestion.EgresosEmpresa", "EgresoEmpresa")
+                        .WithMany()
+                        .HasForeignKey("IdEgreso")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("LiquidacionEgreso_IdEgreso_fkey");
+
+                    b.Navigation("EgresoEmpresa");
+
+                    b.Navigation("Empresa");
+                });
+
+            modelBuilder.Entity("Natural.Data.Domain.Gestion.LiquidacionPago", b =>
+                {
+                    b.HasOne("Natural.Data.Domain.Gestion.Liquidacion", "Liquidacion")
+                        .WithMany("Pagos")
+                        .HasForeignKey("IdLiquidacion")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_LiquidacionPago_Liquidacion");
+
+                    b.Navigation("Liquidacion");
                 });
 
             modelBuilder.Entity("Natural.Data.Domain.Gestion.RegistroServicio", b =>
@@ -389,7 +741,13 @@ namespace Natural.Migrations
 
             modelBuilder.Entity("Natural.Data.Domain.Estructura.Empresa", b =>
                 {
+                    b.Navigation("ConfiguracionGeneral");
+
                     b.Navigation("ConfiguracionServicios");
+
+                    b.Navigation("EgresosEmpresas");
+
+                    b.Navigation("IngresosEmpresas");
 
                     b.Navigation("Personas");
 
@@ -402,8 +760,6 @@ namespace Natural.Migrations
                 {
                     b.Navigation("RegistroServicios");
 
-                    b.Navigation("Rol");
-
                     b.Navigation("Usuario");
                 });
 
@@ -412,6 +768,16 @@ namespace Natural.Migrations
                     b.Navigation("ConfiguracionServicios");
 
                     b.Navigation("RegistroServicios");
+                });
+
+            modelBuilder.Entity("Natural.Data.Domain.Gestion.Liquidacion", b =>
+                {
+                    b.Navigation("Pagos");
+                });
+
+            modelBuilder.Entity("Natural.Data.Domain.Gestion.RegistroServicio", b =>
+                {
+                    b.Navigation("Evidencias");
                 });
 #pragma warning restore 612, 618
         }

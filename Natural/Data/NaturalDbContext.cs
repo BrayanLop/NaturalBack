@@ -19,6 +19,8 @@ public partial class NaturalDbContext : DbContext
     }
 
     public virtual DbSet<LiquidacionEgreso> LiquidacionEgresos { get; set; }
+    public virtual DbSet<Liquidacion> Liquidaciones { get; set; }
+    public virtual DbSet<LiquidacionPago> LiquidacionPagos { get; set; }
     public virtual DbSet<EgresosEmpresa> EgresosEmpresa { get; set; }
     public virtual DbSet<IngresosEmpresa> IngresosEmpresas { get; set; }
     public virtual DbSet<ConfiguracionGeneral> ConfiguracionGeneral { get; set; }
@@ -96,6 +98,59 @@ public partial class NaturalDbContext : DbContext
     .HasConstraintName("LiquidacionEgreso_IdEgreso_fkey");
         });
         
+        modelBuilder.Entity<Liquidacion>(entity =>
+        {
+            entity.ToTable("Liquidacion");
+
+            entity.HasKey(e => e.IdLiquidacion);
+
+            entity.Property(e => e.IdLiquidacion).HasMaxLength(36);
+            entity.Property(e => e.FechaLiquidacion).HasColumnType("timestamp with time zone");
+            entity.Property(e => e.TotalFacturado).HasColumnType("numeric(18, 2)");
+            entity.Property(e => e.TotalComision).HasColumnType("numeric(18, 2)");
+            entity.Property(e => e.TotalDeducciones).HasColumnType("numeric(18, 2)");
+            entity.Property(e => e.NetoPagado).HasColumnType("numeric(18, 2)");
+
+            entity.HasIndex(e => new { e.EmpresaId, e.FechaLiquidacion })
+                .HasDatabaseName("IX_Liquidacion_Empresa_Fecha");
+
+            entity.HasIndex(e => new { e.EmpresaId, e.PersonaId })
+                .HasDatabaseName("IX_Liquidacion_Empresa_Persona");
+
+            entity.HasOne(e => e.Empresa)
+                .WithMany()
+                .HasForeignKey(e => e.EmpresaId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_Liquidacion_Empresa");
+
+            entity.HasOne(e => e.Persona)
+                .WithMany()
+                .HasForeignKey(e => e.PersonaId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_Liquidacion_Persona");
+        });
+
+        modelBuilder.Entity<LiquidacionPago>(entity =>
+        {
+            entity.ToTable("LiquidacionPago");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id).UseIdentityColumn();
+            entity.Property(e => e.IdLiquidacion).HasMaxLength(36).IsRequired();
+            entity.Property(e => e.FormaPago).HasColumnType("character(1)").IsRequired();
+            entity.Property(e => e.Valor).HasColumnType("numeric(18, 2)");
+
+            entity.HasIndex(e => e.IdLiquidacion)
+                .HasDatabaseName("IX_LiquidacionPago_IdLiquidacion");
+
+            entity.HasOne(e => e.Liquidacion)
+                .WithMany(l => l.Pagos)
+                .HasForeignKey(e => e.IdLiquidacion)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_LiquidacionPago_Liquidacion");
+        });
+
         modelBuilder.Entity<EgresosEmpresa>(entity =>
         {
             entity.HasKey(e => e.EgresoId).HasName("EgresosEmpresa_pkey");

@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Natural.Common;
 using Natural.Data.Areas.Contabilidad;
+using Natural.Models.Areas.Contabilidad;
 
 namespace Natural.Controllers.Areas.Contabilidad
 {
@@ -43,7 +45,10 @@ namespace Natural.Controllers.Areas.Contabilidad
 
         [HttpPost("LiquidarPersona")]
         [Authorize(Roles = Roles.Administrador)]
-        public async Task<IActionResult> LiquidarPersona([FromQuery] int personaId, [FromQuery] string? egresosId)
+        public async Task<IActionResult> LiquidarPersona(
+            [FromQuery] int personaId,
+            [FromQuery] string? egresosId,
+            [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] LiquidarPersonaRequest? solicitud = null)
         {
             if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
                 return errorResult!;
@@ -53,13 +58,51 @@ namespace Natural.Controllers.Areas.Contabilidad
 
             try
             {
-                await _servicioContabilidad.LiquidarServiciosAsync(empresaId, personaId, idsEgresos);
-                return Ok();
+                var idLiquidacion = await _servicioContabilidad.LiquidarServiciosAsync(empresaId, personaId, idsEgresos, solicitud?.Pagos);
+                return Ok(new LiquidacionCreadaViewModel { IdLiquidacion = idLiquidacion });
             }
             catch (InvalidOperationException ex)
             {
                 return BadRequest(ex.Message);
             }
+        }
+
+        /// <summary>Vista previa de la liquidación (no guarda nada). egresosId: "1,2,3" opcional para incluir deducciones.</summary>
+        [HttpGet("ResumenLiquidacion/{personaId}")]
+        [Authorize(Policy = Roles.PoliticaGestion)]
+        public async Task<IActionResult> ResumenLiquidacion(int personaId, [FromQuery] string? egresosId)
+        {
+            if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+                return errorResult!;
+
+            if (!TryParsearIds(egresosId, out var idsEgresos))
+                return BadRequest("El parámetro egresosId debe ser una lista de números separados por coma.");
+
+            var resumen = await _servicioContabilidad.ObtenerResumenLiquidacionAsync(empresaId, personaId, idsEgresos);
+            if (resumen is null)
+                return NotFound("La persona no existe en la empresa.");
+
+            return Ok(resumen);
+        }
+
+        /// <summary>Comprobante de una liquidación. Gestión, o el trabajador dueño de la liquidación.</summary>
+        [HttpGet("Comprobante/{idLiquidacion}")]
+        public async Task<IActionResult> Comprobante(string idLiquidacion)
+        {
+            if (!TryObtenerEmpresaId(out var empresaId, out var errorResult))
+                return errorResult!;
+
+            if (string.IsNullOrWhiteSpace(idLiquidacion) || idLiquidacion.Length > 36)
+                return BadRequest("El id de la liquidación no es válido.");
+
+            var comprobante = await _servicioContabilidad.ObtenerComprobanteLiquidacionAsync(empresaId, idLiquidacion);
+            if (comprobante is null)
+                return NotFound("La liquidación no existe.");
+
+            if (!PuedeConsultarPersona(comprobante.Persona.Id))
+                return Forbid();
+
+            return Ok(comprobante);
         }
 
         [HttpGet("HistorialLiquidaciones")]
