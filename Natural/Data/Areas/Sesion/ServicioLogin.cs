@@ -31,16 +31,37 @@ namespace Natural.Data.Areas.Sesion
 
         public async Task<Usuario?> ObtenerUsuarioAsync(string nombreUsuario, string contrasena)
         {
-            var usuario = await _context.Usuario.FirstOrDefaultAsync(u => u.NombreUsuario == nombreUsuario);
-            if (usuario is null)
-                return null;
+            // Puede haber varios registros con el mismo nombre de usuario (la versión anterior buscaba
+            // por usuario Y clave a la vez): se prueba cada uno, como hacía ella.
+            var candidatos = await _context.Usuario
+                .Where(u => u.NombreUsuario == nombreUsuario)
+                .OrderBy(u => u.Id)
+                .ToListAsync();
 
-            if (EsHashLegado(usuario.ClaveHash))
+            foreach (var usuario in candidatos)
             {
-                if (!SonIguales(usuario.ClaveHash, contrasena))
-                    return null;
+                var claveHash = usuario.ClaveHash ?? string.Empty;
 
-                if (_opciones.MigrarHashContrasenas)
+                // Formato antiguo (o cualquier formato no PBKDF2): comparación exacta, igual que antes.
+                if (SonIguales(claveHash, contrasena))
+                {
+                    if (_opciones.MigrarHashContrasenas && EsHashLegado(claveHash))
+                    {
+                        usuario.ClaveHash = _passwordHasher.HashPassword(usuario, contrasena);
+                        await _context.SaveChangesAsync();
+                    }
+
+                    return usuario;
+                }
+
+                if (EsHashLegado(claveHash))
+                    continue;
+
+                var resultado = VerificarHashNuevo(usuario, claveHash, contrasena);
+                if (resultado == PasswordVerificationResult.Failed)
+                    continue;
+
+                if (resultado == PasswordVerificationResult.SuccessRehashNeeded)
                 {
                     usuario.ClaveHash = _passwordHasher.HashPassword(usuario, contrasena);
                     await _context.SaveChangesAsync();
@@ -49,17 +70,20 @@ namespace Natural.Data.Areas.Sesion
                 return usuario;
             }
 
-            var resultado = _passwordHasher.VerifyHashedPassword(usuario, usuario.ClaveHash, contrasena);
-            if (resultado == PasswordVerificationResult.Failed)
-                return null;
+            return null;
+        }
 
-            if (resultado == PasswordVerificationResult.SuccessRehashNeeded)
+        /// <summary>Verifica un hash PBKDF2; si el valor guardado no tiene ese formato, se considera fallido.</summary>
+        private PasswordVerificationResult VerificarHashNuevo(Usuario usuario, string claveHash, string contrasena)
+        {
+            try
             {
-                usuario.ClaveHash = _passwordHasher.HashPassword(usuario, contrasena);
-                await _context.SaveChangesAsync();
+                return _passwordHasher.VerifyHashedPassword(usuario, claveHash, contrasena);
             }
-
-            return usuario;
+            catch (FormatException)
+            {
+                return PasswordVerificationResult.Failed;
+            }
         }
 
         private static bool EsHashLegado(string claveHash) => claveHash.Length == LongitudHashLegado;
