@@ -377,6 +377,8 @@ namespace Natural.Data.Areas.Contabilidad
                     NombreCompleto = ObtenerNombreCompleto(persona?.Nombre, persona?.Apellido),
                     Cedula = persona?.Cedula ?? string.Empty
                 },
+                TotalPropinas = Redondear(registros.Sum(r => r.Propina)),
+                PropinasEntregadas = Redondear(registros.Where(r => r.PropinaPagada).Sum(r => r.Propina)),
                 PeriodoDesde = fechasServicio.Count > 0 ? TimeZoneHelper.ConvertUtcToColombia(fechasServicio.Min()) : null,
                 PeriodoHasta = fechasServicio.Count > 0 ? TimeZoneHelper.ConvertUtcToColombia(fechasServicio.Max()) : null,
                 Servicios = registros

@@ -56,6 +56,11 @@ namespace Natural.Models.Areas.Contabilidad
         public List<ComprobanteDeduccionViewModel> Deducciones { get; set; } = new();
         public decimal TotalDeducciones { get; set; }
         public decimal NetoPagado { get; set; }
+        /// <summary>Propinas de los servicios liquidados (100% del trabajador). Informativo: no hace parte del neto.</summary>
+        public decimal TotalPropinas { get; set; }
+        /// <summary>Parte de <see cref="TotalPropinas"/> que ya se marcó como entregada.</summary>
+        public decimal PropinasEntregadas { get; set; }
+        public decimal PropinasPendientes => TotalPropinas - PropinasEntregadas;
         public List<PagoLiquidacionViewModel> Pagos { get; set; } = new();
         /// <summary>True si la liquidación es anterior a la tabla Liquidacion y sus totales se reconstruyeron con la configuración actual.</summary>
         public bool EsReconstruido { get; set; }
