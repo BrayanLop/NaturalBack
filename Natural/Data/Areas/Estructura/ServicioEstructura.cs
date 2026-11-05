@@ -35,7 +35,8 @@ namespace Natural.Data.Areas.Estructura
             Celular = persona.Celular,
             FechaNacimiento = persona.FechaNacimiento,
             EmpresaId = persona.EmpresaId,
-            Empresa = new EmpresaViewModel
+            // Los usuarios de plataforma (rol 00) no tienen empresa.
+            Empresa = persona.Empresa == null ? null : new EmpresaViewModel
             {
                 Id = persona.Empresa.Id,
                 Nombre = persona.Empresa.Nombre,

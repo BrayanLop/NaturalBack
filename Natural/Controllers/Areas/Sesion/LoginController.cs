@@ -15,15 +15,18 @@ namespace Natural.Controllers.Areas.Sesion
         private readonly ServicioLogin _servicioLogin;
         private readonly ServicioEstructura _servicioEstructura;
         private readonly ServicioSeguridad _servicioSeguridad;
+        private readonly ServicioAcceso _servicioAcceso;
 
         public LoginController(
             ServicioLogin servicioLogin,
             ServicioEstructura servicioEstructura,
-            ServicioSeguridad servicioSeguridad)
+            ServicioSeguridad servicioSeguridad,
+            ServicioAcceso servicioAcceso)
         {
             _servicioLogin = servicioLogin;
             _servicioEstructura = servicioEstructura;
             _servicioSeguridad = servicioSeguridad;
+            _servicioAcceso = servicioAcceso;
         }
 
         [HttpPost("Autenticar")]
@@ -46,13 +49,20 @@ namespace Natural.Controllers.Areas.Sesion
             if (usuario is null)
                 return Unauthorized("Usuario no encontrado");
 
+            // Un usuario desactivado por el administrador (o de una empresa desactivada) no puede ingresar.
+            if (!usuario.Estado)
+                return StatusCode(StatusCodes.Status403Forbidden, "Tu usuario está inactivo. Comunícate con el administrador.");
+
             var rol = await _servicioEstructura.ObtenerRolUsuario(usuario.Id);
             var persona = await _servicioEstructura.ObtenerPersonaPorIdAsync(usuario.PersonaId);
 
             if (persona is null)
                 return NotFound("No se encontró la persona asociada");
 
-            var (token, expiraEn) = _servicioSeguridad.GenerarTokenJwt(persona, rol);
+            if (persona.EmpresaId is int empresaId && !await _servicioAcceso.EmpresaActivaAsync(empresaId))
+                return StatusCode(StatusCodes.Status403Forbidden, "La empresa está inactiva. Comunícate con el administrador de la plataforma.");
+
+            var (token, expiraEn) = _servicioSeguridad.GenerarTokenJwt(persona, rol, usuario.Id);
 
             var response = new
             {

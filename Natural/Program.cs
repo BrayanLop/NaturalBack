@@ -48,6 +48,9 @@ builder.Services.AddScoped<ServicioLogin>();
 builder.Services.AddScoped<ServicioConfiguracion>();
 builder.Services.AddScoped<ServicioContabilidad>();
 builder.Services.AddScoped<ServicioSeguridad>();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<ServicioAcceso>();
+builder.Services.AddScoped<ServicioPlataforma>();
 
 // CORS: si no se configuran orígenes (Cors:AllowedOrigins) se permite cualquiera, como antes.
 var origenesPermitidos = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
@@ -82,6 +85,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                ValidAudience = builder.Configuration["Jwt:Audience"],
                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
            };
+
+           // Desactivar un usuario o una empresa corta el acceso sin esperar a que venza el token
+           // (se revisa como máximo cada 60 s por usuario). Los tokens viejos sin claim usuarioId no se revisan.
+           options.Events = new JwtBearerEvents
+           {
+               OnTokenValidated = async contexto =>
+               {
+                   var claim = contexto.Principal?.FindFirst(Roles.ClaimUsuarioId)?.Value;
+                   if (!int.TryParse(claim, out var usuarioId))
+                       return;
+
+                   var servicioAcceso = contexto.HttpContext.RequestServices.GetRequiredService<ServicioAcceso>();
+                   if (!await servicioAcceso.UsuarioVigenteAsync(usuarioId))
+                       contexto.Fail("El usuario o la empresa están inactivos.");
+               }
+           };
        });
 
 builder.Services.AddAuthorization(options =>
@@ -89,6 +108,7 @@ builder.Services.AddAuthorization(options =>
     // Todo endpoint exige usuario autenticado salvo que tenga [AllowAnonymous].
     options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
     options.AddPolicy(Roles.PoliticaGestion, policy => policy.RequireRole(Roles.Administrador, Roles.SuperEmpleado));
+    options.AddPolicy(Roles.PoliticaAdministrador, policy => policy.RequireRole(Roles.Administrador));
 });
 
 var app = builder.Build();

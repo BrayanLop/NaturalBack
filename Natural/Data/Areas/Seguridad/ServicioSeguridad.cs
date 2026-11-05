@@ -1,4 +1,5 @@
 ﻿using Microsoft.IdentityModel.Tokens;
+using Natural.Common;
 using Natural.Models.Areas.Estructura;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -15,7 +16,27 @@ namespace Natural.Data.Areas.Seguridad
             _configuration = configuration;
         }
 
-        public (string Token, DateTime ExpiraEn) GenerarTokenJwt(PersonaViewModel persona, string? rol)
+        public (string Token, DateTime ExpiraEn) GenerarTokenJwt(PersonaViewModel persona, string? rol, int? usuarioId = null)
+        {
+            var expiresMinutes = int.TryParse(_configuration["Jwt:ExpiresMinutes"], out var minutes)
+                ? minutes
+                : 720;
+
+            return EmitirToken(persona.Id, persona.Nombre, persona.EmpresaId ?? 0, rol, usuarioId, expiresMinutes, impersonadoPor: null);
+        }
+
+        /// <summary>
+        /// Token de soporte: entra a una empresa como su administrador (rol 01). Dura poco y guarda quién lo pidió.
+        /// </summary>
+        public (string Token, DateTime ExpiraEn) GenerarTokenImpersonacion(
+            int personaId, string nombre, int empresaId, int usuarioId, string actor, int minutos)
+        {
+            var duracion = Math.Clamp(minutos, 5, 120);
+            return EmitirToken(personaId, nombre, empresaId, Roles.Administrador, usuarioId, duracion, impersonadoPor: actor);
+        }
+
+        private (string Token, DateTime ExpiraEn) EmitirToken(
+            int personaId, string nombre, int empresaId, string? rol, int? usuarioId, int expiresMinutes, string? impersonadoPor)
         {
             var issuer = _configuration["Jwt:Issuer"]
                 ?? throw new InvalidOperationException("Jwt:Issuer no está configurado.");
@@ -24,17 +45,19 @@ namespace Natural.Data.Areas.Seguridad
             var key = _configuration["Jwt:Key"]
                 ?? throw new InvalidOperationException("Jwt:Key no está configurado.");
 
-            var expiresMinutes = int.TryParse(_configuration["Jwt:ExpiresMinutes"], out var minutes)
-                ? minutes
-                : 720;
-
             var claims = new List<Claim>
             {
-                new Claim(JwtRegisteredClaimNames.Sub, persona.Id.ToString()),
+                new Claim(JwtRegisteredClaimNames.Sub, personaId.ToString()),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim("empresaId", (persona.EmpresaId ?? 0).ToString()),
-                new Claim(ClaimTypes.Name, persona.Nombre)
+                new Claim(Roles.ClaimEmpresaId, empresaId.ToString()),
+                new Claim(ClaimTypes.Name, nombre)
             };
+
+            if (usuarioId is int idUsuario)
+                claims.Add(new Claim(Roles.ClaimUsuarioId, idUsuario.ToString()));
+
+            if (!string.IsNullOrWhiteSpace(impersonadoPor))
+                claims.Add(new Claim(Roles.ClaimImpersonadoPor, impersonadoPor));
 
             if (!string.IsNullOrWhiteSpace(rol))
             {
